@@ -76,28 +76,33 @@ export function ModuleNavigation({
         )}
       </div>
       
-      <div className="flex items-center overflow-x-auto whitespace-nowrap gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {modules.map(m => (
-          <button
-            key={m.name}
-            onClick={() => onSelectModule(m)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg ${
-              selectedModule?.name === m.name
-                ? 'bg-gradient-to-r from-amm-red to-amm-pink text-white shadow-amm-red/30'
-                : 'bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'
-            }`}
-          >
-            {m.name}
-          </button>
-        ))}
-        {/* We keep the button in case there are too many and they want the full modal view */}
-        {modules.length > 3 && (
-          <button
-            onClick={onOpenModal}
-            className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-white/5 hover:border-amm-pink/50 ml-2"
-          >
-            View All {modules.length}
-          </button>
+      <div className="flex items-center gap-2 pb-2">
+        <div className="flex-1 flex items-center overflow-x-auto whitespace-nowrap gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {modules.map(m => (
+            <button
+              key={m.name}
+              onClick={() => onSelectModule(m)}
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg ${
+                selectedModule?.name === m.name
+                  ? 'bg-gradient-to-r from-amm-red to-amm-pink text-white shadow-amm-red/30'
+                  : 'bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'
+              }`}
+            >
+              {m.name}
+            </button>
+          ))}
+        </div>
+        
+        {modules.length > 2 && (
+          <div className="shrink-0 ml-1 pl-1 border-l border-white/10">
+            <button
+              onClick={onOpenModal}
+              className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-white/5 hover:border-amm-pink/50 flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              All
+            </button>
+          </div>
         )}
       </div>
     </div>
