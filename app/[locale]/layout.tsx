@@ -42,6 +42,7 @@ export async function generateMetadata({
   const twitterHandle = "@hoglet_DAO";
 
   return {
+    metadataBase: new URL(url),
     title,
     description,
     keywords,
