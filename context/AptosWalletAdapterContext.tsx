@@ -15,21 +15,18 @@ export const AptosWalletProviderWrapper = ({ children }: PropsWithChildren) => {
             const [
                 { AptosWalletAdapterProvider },
                 { AptosConfig, Network },
-                { PontemWallet },
-                { PetraWallet }
+                { PontemWallet }
             ] = await Promise.all([
                 import("@aptos-labs/wallet-adapter-react"),
                 import("@aptos-labs/ts-sdk"),
-                import("@pontem/wallet-adapter-plugin"),
-                import("petra-plugin-wallet-adapter")
+                import("@pontem/wallet-adapter-plugin")
             ]);
 
             setModules({
                 AptosWalletAdapterProvider,
                 AptosConfig,
                 Network,
-                PontemWallet,
-                PetraWallet
+                PontemWallet
             });
         } catch (error) {
             console.error("Failed to load Aptos modules:", error);
@@ -88,7 +85,7 @@ export const AptosWalletProviderWrapper = ({ children }: PropsWithChildren) => {
       return <>{children}</>;
   }
 
-  const { AptosWalletAdapterProvider, PetraWallet, PontemWallet } = modules;
+  const { AptosWalletAdapterProvider, PontemWallet } = modules;
 
   return (
     <AptosWalletAdapterProvider
