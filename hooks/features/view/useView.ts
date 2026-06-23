@@ -42,8 +42,11 @@ export default function useView<TResult = any[]>(): UseViewReturn<TResult> {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${rpcUrl}/rpc/v1/view`, {
-        method: "POST",
+      const isMainnet = rpcUrl.includes("mainnet");
+      const proxyPathV1 = isMainnet ? "/api/rpc/mainnet" : "/api/rpc/testnet";
+
+      const response = await fetch(`${proxyPathV1}/view`, {
+        method: 'POST',
         headers: {
           "Content-Type": "application/json",
         },

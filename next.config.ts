@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
         destination: `${process.env.NEXT_PUBLIC_RPC_URL_TESTNET || "https://rpc-testnet.supra.com"}/rpc/v1/:path*`,
       },
       {
+        source: "/api/rpc-v2/mainnet/:path*",
+        destination: `${process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://rpc-mainnet.supra.com"}/rpc/v2/:path*`,
+      },
+      {
+        source: "/api/rpc-v2/testnet/:path*",
+        destination: `${process.env.NEXT_PUBLIC_RPC_URL_TESTNET || "https://rpc-testnet.supra.com"}/rpc/v2/:path*`,
+      },
+      {
         source: "/api/rpc-v3/mainnet/:path*",
         destination: `${process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://rpc-mainnet.supra.com"}/rpc/v3/:path*`,
       },

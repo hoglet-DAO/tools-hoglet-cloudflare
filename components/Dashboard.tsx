@@ -17,7 +17,10 @@ export default function Dashboard({ setActiveSection }: { setActiveSection: (s: 
 
     const fetchEpochData = async () => {
       try {
-        const response = await fetch(`${rpcUrl}/rpc/v2/accounts/1/resources/0x1%3A%3Areconfiguration%3A%3AConfiguration`);
+        const isMainnet = rpcUrl.includes("mainnet");
+        const proxyPathV2 = isMainnet ? "/api/rpc-v2/mainnet" : "/api/rpc-v2/testnet";
+
+        const response = await fetch(`${proxyPathV2}/accounts/1/resources/0x1%3A%3Areconfiguration%3A%3AConfiguration`);
         const data = await response.json();
         if (data.data) {
           const lastReconfig = parseInt(data.data.last_reconfiguration_time);
@@ -32,7 +35,10 @@ export default function Dashboard({ setActiveSection }: { setActiveSection: (s: 
 
     const fetchFee = async () => {
       try {
-        const response = await fetch(`${rpcUrl}/rpc/v2/view`, {
+        const isMainnet = rpcUrl.includes("mainnet");
+        const proxyPathV2 = isMainnet ? "/api/rpc-v2/mainnet" : "/api/rpc-v2/testnet";
+
+        const response = await fetch(`${proxyPathV2}/view`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
