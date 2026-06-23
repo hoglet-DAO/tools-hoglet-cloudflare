@@ -1,5 +1,5 @@
 // src/types/index.ts (o src/types/Project.ts)
-import { CandlestickData as LWCandlestickData } from 'lightweight-charts';
+
 const SPIKE_FUN_ADDRESS=process.env.NEXT_PUBLIC_SPIKE_FUN_ADDRESS;
 
 export interface ProjectData {
@@ -22,7 +22,7 @@ export interface ProjectData {
   project_type?: string;
 }
 
-export type CandlestickData = LWCandlestickData;
+
 
 // Interfaz para los datos del autor de un comentario
 export interface UserData {
