@@ -50,3 +50,11 @@ dist/
 # windows
 Thumbs.db
 Desktop.ini
+
+# Internal Documentation & Agent Files
+instructions.txt
+blueprint.md
+AGENTS.md
+CLAUDE.md
+scratch/
+
