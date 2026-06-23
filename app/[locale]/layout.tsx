@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing";
 import { NetworkProvider } from "@/context/NetworkContext";
 import { SupraWalletProvider } from "@/context/SupraWalletContext";
 import { LegalModal } from "@/components/ui/LegalModal";
+import { WalletNetworkSync } from "@/components/wallet/WalletNetworkSync";
 import "../globals.css";
 
 const inter = Inter({
@@ -101,6 +102,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <NetworkProvider>
             <SupraWalletProvider>
+              <WalletNetworkSync />
               <LegalModal />
               {children}
               <footer className="mt-auto py-6 text-center text-[11px] text-zinc-500">
