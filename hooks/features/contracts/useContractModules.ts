@@ -18,9 +18,13 @@ export function useContractModules() {
     setAuthKey(null);
 
     try {
+      const isMainnet = rpcUrl.includes("mainnet");
+      const proxyPathV3 = isMainnet ? "/api/rpc-v3/mainnet" : "/api/rpc-v3/testnet";
+      const proxyPathV1 = isMainnet ? "/api/rpc/mainnet" : "/api/rpc/testnet";
+
       const [modulesRes, accountRes] = await Promise.all([
-        fetch(`${rpcUrl}/rpc/v3/accounts/${addr}/modules?count=20`),
-        fetch(`${rpcUrl}/rpc/v1/accounts/${addr}`)
+        fetch(`${proxyPathV3}/accounts/${addr}/modules?count=20`),
+        fetch(`${proxyPathV1}/accounts/${addr}`)
       ]);
 
       if (accountRes.ok) {
