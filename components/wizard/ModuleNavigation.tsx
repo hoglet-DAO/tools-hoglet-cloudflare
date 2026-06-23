@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 
 interface ModuleNavigationProps {
   modules: any[];
@@ -19,42 +18,6 @@ export function ModuleNavigation({
   contractAddress,
   onOpenModal,
 }: ModuleNavigationProps) {
-  const [maxVisibleModules, setMaxVisibleModules] = useState(8);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Dynamically calculate how many modules fit in the top container
-  useEffect(() => {
-    if (!containerRef.current || modules.length === 0) return;
-
-    const observer = new ResizeObserver((entries) => {
-      const containerWidth = entries[0].contentRect.width;
-      // Reserve space for "+ X" button (approx 130px)
-      const reservedSpace = 130;
-      let availableWidth = containerWidth - reservedSpace;
-      let count = 0;
-      
-      for (let i = 0; i < modules.length; i++) {
-        // Approximate width: char count * 8px + 32px padding + 8px gap
-        const estWidth = modules[i].name.length * 8 + 40; 
-        if (availableWidth >= estWidth) {
-          availableWidth -= estWidth;
-          count++;
-        } else {
-          break;
-        }
-      }
-      
-      if (count >= modules.length) {
-        setMaxVisibleModules(modules.length);
-      } else {
-        setMaxVisibleModules(Math.max(1, count));
-      }
-    });
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [modules]);
-
   const isImmutable = authKey === "0x0000000000000000000000000000000000000000000000000000000000000000";
   // The contract is controlled by an external admin/multisig if authKey is not zeros and authKey !== contractAddress
   const isExternalAdmin = !isImmutable && authKey && contractAddress && authKey.toLowerCase() !== contractAddress.toLowerCase();
@@ -113,8 +76,8 @@ export function ModuleNavigation({
         )}
       </div>
       
-      <div ref={containerRef} className="flex items-center overflow-hidden whitespace-nowrap gap-2 pb-2">
-        {modules.slice(0, maxVisibleModules).map(m => (
+      <div className="flex items-center overflow-x-auto whitespace-nowrap gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {modules.map(m => (
           <button
             key={m.name}
             onClick={() => onSelectModule(m)}
@@ -127,12 +90,13 @@ export function ModuleNavigation({
             {m.name}
           </button>
         ))}
-        {modules.length > maxVisibleModules && (
+        {/* We keep the button in case there are too many and they want the full modal view */}
+        {modules.length > 3 && (
           <button
             onClick={onOpenModal}
-            className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-white/5 hover:border-amm-pink/50"
+            className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-white/5 hover:border-amm-pink/50 ml-2"
           >
-            + {modules.length - maxVisibleModules} Modules
+            View All {modules.length}
           </button>
         )}
       </div>
