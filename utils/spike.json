@@ -1,0 +1,16 @@
+{
+    "name": "Golden Goosey",
+    "ticker": "GG",
+    "fee": 0.01,
+    "contract": "0xc50f259ed3d08ea60a15e886bebd7bdaf81501f5",
+    "image": "https://ik.imagekit.io/PAMBIL/g_goosey.png?updatedAt=1732541613812",
+    "creator": "0xbC63ea0864D82F606A3aB2baAd1867144030AD91",
+    "creation": "21/10/2024, 1:37:37 p.m.",
+    "supply": "137370000000000",
+    "webpage": "goosey.fun",
+    "twitter": "https://x.com/gooseyfun",
+    "description": "Memefying the world!!!",
+    "discord": "",
+    "twitch": "",
+    "network": "Base"
+}

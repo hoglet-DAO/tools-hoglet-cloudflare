@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "tools-hoglet-cloudflare",
+  "compatibility_date": "2026-05-17",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_RPC_URL_TESTNET": "https://rpc-testnet.supra.com",
+    "NEXT_PUBLIC_RPC_URL_MAINNET": "https://rpc-mainnet.supra.com",
+    "NEXT_PUBLIC_ENABLE_SPONSOR_TX": "false",
+    "NEXT_PUBLIC_SUPRA_AMM_ROUTER": "0x3045d27b5fada1e30897a741fb184e48ef0bff3717aea23918ebc1e5c7153083",
+    "NEXT_PUBLIC_BWSUP_ADDRESS": "0x3db05342523bd72817b09f264761a7621eeb21d0960d9676ba5ce14651b17c43"
+  }
+}

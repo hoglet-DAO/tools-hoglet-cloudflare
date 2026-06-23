@@ -1,0 +1,25 @@
+{
+    "name": "spikey.fun | Launch Memecoins & DAOs",
+    "short_name": "Spikey",
+    "description": "The chaotic meme launcher & DAO factory on Supra. Create and launch your own memecoin or DAO with low fees and instant setup.",
+    "icons": [
+      {
+        "src": "/android-chrome-192x192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "/android-chrome-512x512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ],
+    "theme_color": "#1a1a1a",
+    "background_color": "#1a1a1a",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait"
+  }
+  
