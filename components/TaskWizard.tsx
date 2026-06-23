@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { motion } from "framer-motion";
 import useView from "@/hooks/features/view/useView";
@@ -33,7 +33,12 @@ export default function TaskWizard() {
     isScanning,
     scanModules,
     handleSelectModule,
+    clearModules,
   } = useContractModules();
+
+  useEffect(() => {
+    clearModules();
+  }, [network, clearModules]);
 
   const { callView } = useView();
   const [manualAddress, setManualAddress] = useState("");

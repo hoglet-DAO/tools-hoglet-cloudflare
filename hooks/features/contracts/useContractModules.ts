@@ -80,6 +80,14 @@ export function useContractModules() {
     setSelectedFunction(func);
   }, []);
 
+  const clearModules = useCallback(() => {
+    setModules([]);
+    setSelectedModule(null);
+    setFunctions([]);
+    setSelectedFunction(null);
+    setAuthKey(null);
+  }, []);
+
   return {
     modules,
     selectedModule,
@@ -90,5 +98,6 @@ export function useContractModules() {
     scanModules,
     handleSelectModule,
     handleSelectFunction,
+    clearModules,
   };
 }
