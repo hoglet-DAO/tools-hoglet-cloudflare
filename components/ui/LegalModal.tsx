@@ -46,7 +46,7 @@ export function LegalModal() {
 
             <div className="flex flex-col gap-3">
               <a 
-                href="https://github.com/SNABUR/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" 
+                href="https://github.com/hoglet-DAO/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" 
                 className="text-xs text-center text-zinc-500 hover:text-white transition-colors underline underline-offset-2 mb-2"
                 target="_blank" 
                 rel="noopener noreferrer"

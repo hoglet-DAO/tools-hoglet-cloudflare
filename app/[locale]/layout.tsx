@@ -103,7 +103,7 @@ export default async function LocaleLayout({
               <LegalModal />
               {children}
               <footer className="mt-auto py-6 text-center text-[11px] text-zinc-500">
-                Hoglet Tools is a non-custodial infrastructure. Provided As-Is without warranties. <a href="https://github.com/SNABUR/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300 transition-colors">Read our Open-Source Terms</a>.
+                Hoglet Tools is a non-custodial infrastructure. Provided As-Is without warranties. <a href="https://github.com/hoglet-DAO/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300 transition-colors">Read our Open-Source Terms</a>.
               </footer>
             </SupraWalletProvider>
           </NetworkProvider>
