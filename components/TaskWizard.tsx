@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { motion } from "framer-motion";
 import useView from "@/hooks/features/view/useView";
@@ -24,7 +24,7 @@ export default function TaskWizard() {
   const { accounts, connect, disconnect, rpcUrl, sendRawTransaction } = useSupraWallet();
   const address = accounts[0] || "";
   const isConnected = !!address;
-  
+
   const {
     modules,
     selectedModule,
@@ -42,11 +42,11 @@ export default function TaskWizard() {
 
   const handleExecuteFunction = async (func: any, functionParams: { [key: string]: string }, typeParams: { [key: string]: string }) => {
     if (!selectedModule || !targetAddress) return { success: false, error: "Module or Address not selected." };
-    
+
     try {
       const paramList = (func.params || []).filter((p: string) => p !== '&signer');
       const genericParamList = func.generic_type_params || [];
-        
+
       // Use the universal parser to generate the EXACT javascript types needed for the payload
       const parsedArgs = paramList.map((paramType: string, idx: number) => {
         const val = functionParams[idx] || "";
@@ -99,7 +99,7 @@ export default function TaskWizard() {
     <section id="automationSection" className="content-section p-4 sm:p-6 max-w-7xl mx-auto flex-1 w-full relative">
       <MeshBackground />
       <Suspense fallback={null}>
-        <WizardUrlSync 
+        <WizardUrlSync
           manualAddress={manualAddress}
           setManualAddress={setManualAddress}
           selectedModuleName={selectedModule?.name}
@@ -111,7 +111,7 @@ export default function TaskWizard() {
         />
       </Suspense>
       {/* Target Address Search Bar */}
-      <AddressInput 
+      <AddressInput
         isConnected={isConnected}
         address={address}
         manualAddress={manualAddress}
@@ -130,7 +130,7 @@ export default function TaskWizard() {
 
       {/* Loading Skeleton */}
       {isScanning && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className={`p-6 rounded-2xl ${glassStyle} mb-6`}
         >
@@ -146,10 +146,10 @@ export default function TaskWizard() {
           </div>
         </motion.div>
       )}
-      
+
       {/* Tabbed Interface */}
       {!isScanning && modules.length > 0 && (
-        <ContractTabs 
+        <ContractTabs
           isConnected={isConnected}
           onConnect={() => window.dispatchEvent(new Event('open-wallet-modal'))}
           modules={modules}
