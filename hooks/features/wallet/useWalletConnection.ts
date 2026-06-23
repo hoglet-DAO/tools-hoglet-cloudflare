@@ -48,7 +48,7 @@ export const useWalletConnection = () => {
       console.error('Error updating balance:', error);
       setBalance('');
     }
-  }, []);
+  }, [currentChainId]);
 
   const getNetworkData = useCallback(async (currentProvider: any, wallet: WalletType) => {
       if (!currentProvider) return {};
