@@ -59,6 +59,17 @@ export function parseMoveArgument(val: string, paramType: string): any {
   }
 
   // 5. Default (Address, String, Structs, etc) -> Return String type
+  if (typeof trimmed === "string") {
+    // If it looks like a struct (address::module::name) and is missing 0x
+    if (trimmed.includes("::") && !trimmed.startsWith("0x")) {
+      return "0x" + trimmed;
+    }
+    // If it is an address and is missing 0x
+    if (paramType === "address" && !trimmed.startsWith("0x")) {
+      return "0x" + trimmed;
+    }
+  }
+
   return trimmed;
 }
 
@@ -85,7 +96,7 @@ export function getSmartPlaceholder(paramType: any): string {
   if (paramType === "bool") return "e.g. true or false";
   if (paramType === "address") return "e.g. 0x123...abc";
   if (paramType === "u64" || paramType === "u128" || paramType === "u256") return "e.g. 1000000";
-  if (paramType === "0x1::string::String") return "e.g. Hello World";
+  if (paramType === "0x1::string::String") return "e.g. 0x1::supra_coin::SupraCoin";
   
   return `Enter ${paramType}...`;
 }

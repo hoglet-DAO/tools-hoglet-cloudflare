@@ -20,6 +20,9 @@ interface ContractTabsProps {
   contractAddress?: string;
   onExecute: (func: any, params: { [key: string]: string }, typeParams: { [key: string]: string }) => Promise<{ success: boolean; result?: any; error?: string }>;
   glassStyle: string;
+  hasMoreModules?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMoreModules?: () => Promise<boolean>;
 }
 
 export function ContractTabs({
@@ -33,6 +36,9 @@ export function ContractTabs({
   contractAddress,
   onExecute,
   glassStyle,
+  hasMoreModules,
+  isLoadingMore,
+  onLoadMoreModules,
 }: ContractTabsProps) {
   const [selectedFunction, setSelectedFunction] = useState<any>(null);
   
@@ -103,6 +109,9 @@ export function ContractTabs({
           authKey={authKey}
           contractAddress={contractAddress}
           onOpenModal={() => setIsModalOpen(true)}
+          hasMoreModules={hasMoreModules}
+          isLoadingMore={isLoadingMore}
+          onLoadMoreModules={onLoadMoreModules}
         />
 
         {/* MAIN CONTENT AREA */}
@@ -123,6 +132,7 @@ export function ContractTabs({
           <FunctionForm 
             selectedFunction={selectedFunction}
             selectedModule={selectedModule}
+            contractAddress={contractAddress}
             isConnected={isConnected}
             onConnect={onConnect}
             functionParams={functionParams}
@@ -144,6 +154,9 @@ export function ContractTabs({
         modules={modules}
         selectedModule={selectedModule}
         onSelectModule={onSelectModule}
+        hasMoreModules={hasMoreModules}
+        isLoadingMore={isLoadingMore}
+        onLoadMoreModules={onLoadMoreModules}
       />
     </>
   );

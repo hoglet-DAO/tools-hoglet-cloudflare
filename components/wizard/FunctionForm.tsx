@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSmartPlaceholder } from "@/utils/moveParser";
 import { VectorInput } from "./VectorInput";
@@ -7,6 +8,7 @@ import { VectorInput } from "./VectorInput";
 interface FunctionFormProps {
   selectedFunction: any;
   selectedModule: any;
+  contractAddress?: string;
   isConnected: boolean;
   onConnect: () => void;
   functionParams: { [key: string]: string };
@@ -23,6 +25,7 @@ interface FunctionFormProps {
 export function FunctionForm({
   selectedFunction,
   selectedModule,
+  contractAddress,
   isConnected,
   onConnect,
   functionParams,
@@ -35,6 +38,61 @@ export function FunctionForm({
   result,
   error,
 }: FunctionFormProps) {
+  const [copied, setCopied] = useState(false);
+  const [exportCopied, setExportCopied] = useState(false);
+  const [showPayload, setShowPayload] = useState(false);
+
+  // Helper to extract robust module address and name
+  const getModuleDetails = () => {
+    let modAddr = contractAddress || "unknown";
+    let modName = selectedModule?.name || "unknown";
+    if (selectedModule?.name && selectedModule.name.includes("::")) {
+      const parts = selectedModule.name.split("::");
+      modAddr = parts[0];
+      modName = parts[1];
+    }
+    return { modAddr, modName };
+  };
+
+  const handleCopy = () => {
+    const textToCopy = error ? error : (typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportForAI = () => {
+    if (!selectedModule || !selectedFunction) return;
+
+    const { modAddr, modName } = getModuleDetails();
+    const functionName = selectedFunction.name || "unknown";
+
+    const exportData = {
+      context: "Supra Blockchain Smart Contract ABI",
+      fully_qualified_name: `${modAddr}::${modName}::${functionName}`,
+      contract_address: modAddr,
+      module_name: modName,
+      function_name: functionName,
+      execution_kind: selectedFunction.is_entry ? "entry" : (selectedFunction.is_view ? "view" : "internal"),
+      requires_wallet_signature: selectedFunction.is_entry,
+      type_arguments: selectedFunction.generic_type_params?.map((_: any, index: number) => ({
+        index,
+        hint: "Generic Type (e.g., 0x1::supra_coin::SupraCoin)"
+      })) || [],
+      arguments: (selectedFunction.params || [])
+        .filter((p: string) => p !== '&signer')
+        .map((type: string, index: number) => ({
+          index,
+          type,
+          example_value_format: type.includes("0x1::string::String") ? "0x1::supra_coin::SupraCoin" : (type === "bool" ? "true/false" : "any valid Move type representation")
+        }))
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+    setExportCopied(true);
+    setTimeout(() => setExportCopied(false), 2000);
+  };
+
   if (!selectedFunction) {
     return (
       <div className="lg:w-7/12 xl:w-2/3 flex-1 w-full">
@@ -73,25 +131,50 @@ export function FunctionForm({
             {/* Decorative glow */}
             <div className={`absolute top-0 left-0 w-full h-1 ${!selectedFunction.is_entry && !selectedFunction.is_view ? 'bg-zinc-600' : (selectedFunction.is_view ? 'bg-gradient-to-r from-cyan-400 to-blue-600' : 'bg-gradient-to-r from-amm-red to-amm-pink')}`} />
             
-            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              {selectedFunction.name}
-              {!selectedFunction.is_entry && !selectedFunction.is_view ? (
-                <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800/50 text-zinc-400 border border-zinc-600/50 tracking-wider">INTERNAL</span>
-              ) : selectedFunction.is_view ? (
-                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 tracking-wider">VIEW</span>
-              ) : (
-                <div className="relative group">
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amm-red/20 text-amm-pink border border-amm-pink/30 tracking-wider flex items-center gap-1 cursor-help">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /></svg>
-                    ENTRY
-                  </span>
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-zinc-900 border border-zinc-700 text-[10px] text-zinc-300 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-10 text-center leading-tight">
-                    State-changing function: This action will trigger a wallet signature and consume network gas.
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-zinc-900" />
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+              <h3 className="text-xl font-bold text-white flex flex-wrap items-center gap-2">
+                {selectedFunction.name}
+                {!selectedFunction.is_entry && !selectedFunction.is_view ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800/50 text-zinc-400 border border-zinc-600/50 tracking-wider">INTERNAL</span>
+                ) : selectedFunction.is_view ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 tracking-wider">VIEW</span>
+                ) : (
+                  <div className="relative group">
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amm-red/20 text-amm-pink border border-amm-pink/30 tracking-wider flex items-center gap-1 cursor-help">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /></svg>
+                      ENTRY
+                    </span>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 p-2 bg-zinc-900 border border-zinc-700 text-[10px] text-zinc-300 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all pointer-events-none z-10 text-center leading-tight">
+                      State-changing function: This action will trigger a wallet signature and consume network gas.
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-zinc-900" />
+                    </div>
                   </div>
-                </div>
-              )}
-            </h3>
+                )}
+              </h3>
+
+              <button 
+                type="button"
+                onClick={handleExportForAI}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shrink-0 border ${
+                  exportCopied 
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                    : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                }`}
+                title="Copy structured ABI for AI Agents"
+              >
+                {exportCopied ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    Copied JSON!
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm">🤖</span> Export for AI
+                  </>
+                )}
+              </button>
+            </div>
+            
             <p className="text-sm text-gray-400 mb-6 font-mono">
               Module: {selectedModule?.name}
             </p>
@@ -123,8 +206,19 @@ export function FunctionForm({
                 <div className="space-y-4">
                   {selectedFunction.generic_type_params.map((_: any, idx: number) => (
                     <div key={`type-${idx}`} className="group">
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 group-focus-within:text-white transition-colors">
-                      Type Arg {idx} (e.g., 0x1::supra_coin::SupraCoin)
+                    <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-400 mb-2 group-focus-within:text-white transition-colors">
+                      <span className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700 shadow-inner">Type Arg {idx}</span>
+                        <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono tracking-tight shadow-[0_0_10px_rgba(59,130,246,0.1)]">Generic Type</span>
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => setTypeParams({...typeParams, [idx]: "0x1::supra_coin::SupraCoin"})}
+                        className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 transition-all text-[10px] flex items-center gap-1 cursor-pointer font-normal whitespace-nowrap shadow-[0_0_10px_rgba(245,158,11,0.1)]"
+                        title="Click to auto-fill SupraCoin type"
+                      >
+                        <span className="opacity-70 font-bold">✨ Example:</span> 0x1::supra_coin::SupraCoin
+                      </button>
                     </label>
                     <input 
                       type="text" 
@@ -160,8 +254,21 @@ export function FunctionForm({
                 <div className="space-y-4">
                   {paramsList.map((paramType: string, idx: number) => (
                     <div key={idx} className="group">
-                    <label className="block text-xs font-semibold text-gray-400 mb-1 group-focus-within:text-white transition-colors">
-                      arg{idx} ({paramType})
+                    <label className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-400 mb-2 group-focus-within:text-white transition-colors">
+                      <span className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded bg-zinc-800/80 text-zinc-300 border border-zinc-700 shadow-inner">arg{idx}</span>
+                        <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono tracking-tight shadow-[0_0_10px_rgba(168,85,247,0.1)]">{paramType}</span>
+                      </span>
+                      {(paramType === "0x1::string::String" || paramType === "vector<0x1::string::String>") && (
+                        <button 
+                          type="button"
+                          onClick={() => setFunctionParams({...functionParams, [idx]: "0x1::supra_coin::SupraCoin"})}
+                          className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 transition-all text-[10px] flex items-center gap-1 cursor-pointer font-normal whitespace-nowrap shadow-[0_0_10px_rgba(245,158,11,0.1)]"
+                          title="Click to auto-fill SupraCoin type string"
+                        >
+                          <span className="opacity-70 font-bold">✨ Example:</span> 0x1::supra_coin::SupraCoin
+                        </button>
+                      )}
                     </label>
                     {paramType.startsWith("vector<") ? (
                       <VectorInput 
@@ -215,6 +322,52 @@ export function FunctionForm({
               </div>
             ) : (
               <div className="flex flex-col gap-4 mt-8">
+                
+                {/* Dry Run / View Payload Feature */}
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPayload(!showPayload)}
+                    className="text-xs text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors"
+                  >
+                    <svg className={`w-3.5 h-3.5 transition-transform ${showPayload ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    {showPayload ? 'Hide' : 'View'} Raw Payload
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showPayload && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden mt-3"
+                      >
+                        <div className="p-4 bg-zinc-900/80 border border-white/10 rounded-xl text-xs font-mono text-zinc-300 overflow-x-auto whitespace-break-spaces break-all sm:break-normal">
+                          <div className="text-zinc-500 mb-2">// Payload passed to the wallet/RPC:</div>
+                          <div><span className="text-pink-400">moduleAddress:</span> "{getModuleDetails().modAddr}"</div>
+                          <div><span className="text-pink-400">moduleName:</span> "{getModuleDetails().modName}"</div>
+                          <div><span className="text-pink-400">functionName:</span> "{selectedFunction.name}"</div>
+                          
+                          <div className="mt-2"><span className="text-blue-400">typeArguments:</span> [</div>
+                          {(selectedFunction.generic_type_params || []).map((_: any, idx: number) => (
+                            <div key={idx} className="pl-4">"{typeParams[idx] || ''}"{idx < selectedFunction.generic_type_params.length - 1 ? ',' : ''}</div>
+                          ))}
+                          <div>]</div>
+
+                          <div className="mt-2"><span className="text-emerald-400">arguments:</span> [</div>
+                          {paramsList.map((type: string, idx: number) => (
+                            <div key={idx} className="pl-4">
+                              <span className="text-zinc-500 mr-2">/* {type} */</span>
+                              "{functionParams[idx] || ''}"{idx < paramsList.length - 1 ? ',' : ''}
+                            </div>
+                          ))}
+                          <div>]</div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {(!isConnected && !selectedFunction.is_view) ? (
                   <button 
                     onClick={onConnect}
@@ -258,8 +411,30 @@ export function FunctionForm({
                   animate={{ opacity: 1, y: 0 }}
                   className={`mt-6 rounded-lg overflow-hidden border ${error ? 'border-amm-pink/50' : 'border-green-500/30'}`}
                 >
-                  <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${error ? 'bg-amm-red/20 text-amm-pink' : 'bg-green-500/20 text-green-400'}`}>
-                    {error ? 'Error / Execution Failed' : 'Success / Response'}
+                  <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 ${error ? 'bg-amm-red/20 text-amm-pink' : 'bg-green-500/20 text-green-400'}`}>
+                    <span>{error ? 'Error / Execution Failed' : 'Success / Response'}</span>
+                    <button 
+                      type="button"
+                      onClick={handleCopy}
+                      className={`px-2 py-1 rounded transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                        copied 
+                          ? 'bg-green-500/30 text-green-300 border-green-500/50' 
+                          : 'bg-black/20 hover:bg-black/40 border-white/10 hover:border-white/20'
+                      }`}
+                      title="Copy to clipboard"
+                    >
+                      {copied ? (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                          Copy
+                        </>
+                      )}
+                    </button>
                   </div>
                   <pre className="p-4 bg-black text-sm text-gray-200 overflow-x-auto font-mono whitespace-pre-wrap max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20">
                     {error ? error : (typeof result === 'string' ? result : JSON.stringify(result, null, 2))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 interface VectorInputProps {
@@ -30,6 +30,29 @@ export function VectorInput({
   };
 
   const [items, setItems] = useState<string[]>(initialItems());
+
+  // Sync internal state if external value changes (e.g., from an auto-fill button)
+  useEffect(() => {
+    try {
+      if (!value) {
+        setItems([""]);
+        return;
+      }
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Only update if it's actually different to avoid infinite loops
+        if (JSON.stringify(parsed) !== JSON.stringify(items)) {
+          setItems(parsed);
+        }
+      } else if (value !== items[0] && value !== JSON.stringify(items)) {
+        setItems([value]);
+      }
+    } catch {
+      if (value !== items[0] && value !== JSON.stringify(items)) {
+        setItems([value]);
+      }
+    }
+  }, [value]);
 
   const updateItems = (newItems: string[]) => {
     setItems(newItems);

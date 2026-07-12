@@ -31,7 +31,10 @@ export default function TaskWizard() {
     functions,
     authKey,
     isScanning,
+    hasMoreModules,
+    isLoadingMore,
     scanModules,
+    loadMoreModules,
     handleSelectModule,
     clearModules,
   } = useContractModules();
@@ -60,7 +63,11 @@ export default function TaskWizard() {
 
       // Map the generic type params to an array of strings
       const rawTypeArgs = genericParamList.map((_: any, idx: number) => {
-        return typeParams[idx] || "";
+        const val = typeParams[idx] || "";
+        if (val.includes("::") && !val.startsWith("0x")) {
+          return "0x" + val;
+        }
+        return val;
       });
 
       if (func.is_view) {
@@ -165,6 +172,9 @@ export default function TaskWizard() {
           contractAddress={targetAddress}
           onExecute={handleExecuteFunction}
           glassStyle={glassStyle}
+          hasMoreModules={hasMoreModules}
+          isLoadingMore={isLoadingMore}
+          onLoadMoreModules={loadMoreModules}
         />
       )}
     </section>

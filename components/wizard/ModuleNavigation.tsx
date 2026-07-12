@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 
 interface ModuleNavigationProps {
   modules: any[];
@@ -8,6 +9,9 @@ interface ModuleNavigationProps {
   authKey?: string | null;
   contractAddress?: string;
   onOpenModal: () => void;
+  hasMoreModules?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMoreModules?: () => Promise<boolean>;
 }
 
 export function ModuleNavigation({
@@ -17,14 +21,39 @@ export function ModuleNavigation({
   authKey,
   contractAddress,
   onOpenModal,
+  hasMoreModules,
+  isLoadingMore,
+  onLoadMoreModules,
 }: ModuleNavigationProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12; // Fewer items per page for the horizontal bar
+  const displayedModules = modules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  const canGoNext = (currentPage * itemsPerPage < modules.length) || hasMoreModules;
+  const canGoPrev = currentPage > 1;
+
+  const handleNext = async () => {
+    if (isLoadingMore) return;
+    if (currentPage * itemsPerPage >= modules.length && hasMoreModules) {
+      if (onLoadMoreModules) {
+        const success = await onLoadMoreModules();
+        if (!success) return;
+      }
+    }
+    setCurrentPage(p => p + 1);
+  };
+
+  const handlePrev = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
+
   const isImmutable = authKey === "0x0000000000000000000000000000000000000000000000000000000000000000";
   // The contract is controlled by an external admin/multisig if authKey is not zeros and authKey !== contractAddress
   const isExternalAdmin = !isImmutable && authKey && contractAddress && authKey.toLowerCase() !== contractAddress.toLowerCase();
 
   return (
-    <div className="p-4 border-b border-white/10 bg-black/40 rounded-t-2xl z-10">
-      <div className="flex items-center gap-3 mb-3 relative flex-wrap">
+    <div className="p-4 border-b border-white/10 bg-black/40 rounded-t-2xl z-10 flex flex-col gap-3">
+      <div className="flex items-center gap-3 relative flex-wrap">
         <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
         <span className="text-white font-bold tracking-wide text-sm uppercase">Contract Modules</span>
         
@@ -76,28 +105,52 @@ export function ModuleNavigation({
         )}
       </div>
       
-      <div className="flex items-center gap-2 pb-2">
-        <div className="flex-1 flex items-center overflow-x-auto whitespace-nowrap gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {modules.map(m => (
-            <button
-              key={m.name}
-              onClick={() => onSelectModule(m)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg ${
-                selectedModule?.name === m.name
-                  ? 'bg-gradient-to-r from-amm-red to-amm-pink text-white shadow-amm-red/30'
-                  : 'bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20'
-              }`}
-            >
-              {m.name}
-            </button>
-          ))}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handlePrev}
+          disabled={!canGoPrev || isLoadingMore}
+          className="shrink-0 p-2 rounded-full bg-white/5 border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 hover:border-white/20 hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg relative group"
+        >
+          <div className="absolute inset-0 bg-white/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+        </button>
+
+        <div className="flex-1 flex items-center overflow-x-auto whitespace-nowrap gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-1 py-1">
+          {isLoadingMore && displayedModules.length === 0 ? (
+            <div className="px-4 py-2 flex items-center gap-3 text-cyan-400 text-sm font-bold bg-cyan-400/10 border border-cyan-400/20 rounded-full animate-pulse shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+               <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" /> Loading Modules...
+            </div>
+          ) : (
+            displayedModules.map(m => (
+              <button
+                key={m.name}
+                onClick={() => onSelectModule(m)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-lg hover:scale-105 active:scale-95 ${
+                  selectedModule?.name === m.name
+                    ? 'bg-gradient-to-r from-amm-red to-amm-pink text-white shadow-[0_0_15px_rgba(255,42,133,0.3)] border border-amm-pink/50'
+                    : 'bg-black/60 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/30'
+                }`}
+              >
+                {m.name}
+              </button>
+            ))
+          )}
         </div>
         
+        <button
+          onClick={handleNext}
+          disabled={!canGoNext || isLoadingMore}
+          className="shrink-0 p-2 rounded-full bg-white/5 border border-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-500/10 hover:border-cyan-500/50 hover:text-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg relative group"
+        >
+          <div className="absolute inset-0 bg-cyan-400/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden"></div>
+          <svg className="w-4 h-4 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+        </button>
+
         {modules.length > 2 && (
-          <div className="shrink-0 ml-1 pl-1 border-l border-white/10">
+          <div className="shrink-0 ml-1 pl-3 border-l border-white/10">
             <button
               onClick={onOpenModal}
-              className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-white/5 hover:border-amm-pink/50 flex items-center gap-1"
+              className="whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all duration-300 shadow-lg bg-black/60 border border-white/10 text-amm-pink hover:bg-amm-pink/10 hover:border-amm-pink/50 hover:shadow-[0_0_15px_rgba(255,42,133,0.3)] hover:scale-105 active:scale-95 flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               All
