@@ -15,7 +15,7 @@ export const TechnicalIdentifierBlock = ({
   copiedType, 
   handleCopy 
 }: TechnicalIdentifierBlockProps) => {
-  if (!typeString.includes('::')) {
+  if (!typeString?.includes('::')) {
     return (
       <div className="bg-black/30 rounded-lg p-3 font-mono text-xs text-gray-400 border border-white/5">
         <div className="flex justify-between items-center">
@@ -41,7 +41,7 @@ export const TechnicalIdentifierBlock = ({
   
   let structName = structRaw;
   let genericPart = "";
-  if (structRaw.includes('<') && structRaw.endsWith('>')) {
+  if (structRaw?.includes('<') && structRaw.endsWith('>')) {
     const splitIdx = structRaw.indexOf('<');
     structName = structRaw.substring(0, splitIdx);
     const inside = structRaw.substring(splitIdx + 1, structRaw.length - 1);

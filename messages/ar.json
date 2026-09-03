@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | المُتفاعل الأفضل مع العقود الذكية",
+    "description": "مُتفاعل احترافي للعقود الذكية، وبيئة اختبار، وحزمة تفاعل مبنية خصيصاً لنظام Supra البيئي. اربط محفظتك، واستكشف الوحدات، ونفّذ المعاملات بسلاسة على الشبكتين التجريبية والرئيسية.",
+    "keywords": "Supra, Blockchain, عقود ذكية, Explorer, DApp, SupraOracles, لغة Move, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "ابدأ",
+    "createTask": "إنشاء مهمة",
+    "marketplace": "السوق",
+    "myTasks": "مهامي",
+    "networkStatus": "حالة الشبكة",
+    "nextEpochIn": "الحقبة التالية بعد",
+    "automationFee": "رسوم الأتمتة",
+    "holdToSwitch": "اضغط مطولاً للتبديل إلى {networkName}",
+    "mainnetShort": "رئيسية",
+    "testnetShort": "تجريبية"
+  },
+  "translation": {
+    "loading": "جار التحميل...",
+    "getFreeSupra": "احصل على Supra مجاناً"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | Лучший интерактор смарт-контрактов",
+    "description": "Профессиональный интерактор смарт-контрактов, тестовая среда и набор инструментов для взаимодействия, созданные специально для экосистемы Supra. Подключите кошелёк, изучайте модули и беспрепятственно выполняйте транзакции в тестовой и основной сети.",
+    "keywords": "Supra, Blockchain, смарт-контракты, Explorer, DApp, SupraOracles, язык Move, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "Начать",
+    "createTask": "Создать задачу",
+    "marketplace": "Маркетплейс",
+    "myTasks": "Мои задачи",
+    "networkStatus": "Состояние сети",
+    "nextEpochIn": "Следующая эпоха через",
+    "automationFee": "Комиссия за автоматизацию",
+    "holdToSwitch": "Удерживайте для переключения на {networkName}",
+    "mainnetShort": "Мейн",
+    "testnetShort": "Тест"
+  },
+  "translation": {
+    "loading": "Загрузка...",
+    "getFreeSupra": "Получить бесплатные Supra"
+  }
+}

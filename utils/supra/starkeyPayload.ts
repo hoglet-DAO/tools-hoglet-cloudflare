@@ -65,13 +65,13 @@ export async function sendStarkeyTransaction({
       const errorMessage = sponsorError instanceof Error ? sponsorError.message : String(sponsorError);
 
       const isUserRejection =
-        errorMessage.includes("Rejected by user") ||
-        errorMessage.includes("User rejected") ||
-        errorMessage.includes("User cancelled") ||
-        errorMessage.includes("User denied") ||
-        errorMessage.includes("User failed to sign") ||
-        errorMessage.includes("Signing response was incomplete") ||
-        errorMessage.includes("4001") ||
+        errorMessage?.includes("Rejected by user") ||
+        errorMessage?.includes("User rejected") ||
+        errorMessage?.includes("User cancelled") ||
+        errorMessage?.includes("User denied") ||
+        errorMessage?.includes("User failed to sign") ||
+        errorMessage?.includes("Signing response was incomplete") ||
+        errorMessage?.includes("4001") ||
         (sponsorError as any).code === 4001;
       
       if (isUserRejection) {

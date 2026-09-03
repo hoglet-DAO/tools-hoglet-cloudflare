@@ -185,8 +185,8 @@ export async function executeSponsoredTransactionFlow(
                 // Check for user rejection specifically from the provider's error
                 const errorMessage = signError instanceof Error ? signError.message : String(signError);
                 const isUserRejection = 
-                    errorMessage.includes("User rejected") || 
-                    errorMessage.includes("User cancelled") || 
+                    errorMessage?.includes("User rejected") || 
+                    errorMessage?.includes("User cancelled") || 
                     (signError as any).code === 4001; // Common Aptos wallet rejection code
                 
                 if (isUserRejection) {

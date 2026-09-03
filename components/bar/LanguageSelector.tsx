@@ -8,6 +8,38 @@ interface LanguageSelectorProps {
   isMobile?: boolean;
 }
 
+const LANGUAGE_LABELS: { [key: string]: string } = {
+  ar: 'العربية (Árabe)',
+  de: 'Deutsch (Alemán)',
+  en: 'English (Inglés)',
+  es: 'Español',
+  fr: 'Français (Francés)',
+  hi: 'हिन्दी (Hindi)',
+  id: 'Bahasa Indonesia',
+  ja: '日本語 (Japonés)',
+  ko: '한국어 (Coreano)',
+  ru: 'Русский (Ruso)',
+  zh: '中文 (Chino)',
+  pt: 'Português (Portugués)',
+  ha: 'Hausa',
+};
+
+const SHORT_LABELS: { [key: string]: string } = {
+  ar: 'Ar',
+  de: 'De',
+  en: 'En',
+  es: 'Es',
+  fr: 'Fr',
+  hi: 'Hi',
+  id: 'Id',
+  ja: 'Ja',
+  ko: 'Ko',
+  ru: 'Ru',
+  zh: 'Zh',
+  pt: 'Pt',
+  ha: 'Ha',
+};
+
 export default function LanguageSelector({ language, setLanguage, isMobile = false }: LanguageSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,23 +73,13 @@ export default function LanguageSelector({ language, setLanguage, isMobile = fal
         renderValue={(selected) => (
           <div className="flex items-center">
             <span className="mr-2">🌍</span>
-            {selected === 'es' ? 'Es' : selected === 'en' ? 'En' : 'Fr'}
+            {SHORT_LABELS[selected] ?? selected}
           </div>
         )}
       >
-        <MenuItem value="ar">العربية (Árabe)</MenuItem>
-        <MenuItem value="de">Deutsch (Alemán)</MenuItem>
-        <MenuItem value="en">English (Inglés)</MenuItem>
-        <MenuItem value="es">Español</MenuItem>
-        <MenuItem value="fr">Français (Francés)</MenuItem>
-        <MenuItem value="hi">हिन्दी (Hindi)</MenuItem>
-        <MenuItem value="id">Bahasa Indonesia</MenuItem>
-        <MenuItem value="ja">日本語 (Japonés)</MenuItem>
-        <MenuItem value="ko">한국어 (Coreano)</MenuItem>
-        <MenuItem value="ru">Русский (Ruso)</MenuItem>
-        <MenuItem value="zh">中文 (Chino)</MenuItem>
-        <MenuItem value="pt">Português (Portugués)</MenuItem>
-        <MenuItem value="ha">Hausa</MenuItem>
+        {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+          <MenuItem key={code} value={code}>{label}</MenuItem>
+        ))}
       </Select>
     </FormControl>
   );

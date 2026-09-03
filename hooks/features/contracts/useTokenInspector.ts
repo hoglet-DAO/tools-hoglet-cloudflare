@@ -9,6 +9,8 @@ export interface TokenData {
   decimals: number;
   supply?: string;
   creator?: string;
+  isWrapper?: boolean;
+  wrappedLegacyCoin?: string;
 }
 
 export interface AdminCapability {
@@ -22,6 +24,16 @@ export interface AdminCapability {
   };
   faAddress?: string;
 }
+
+const hexToString = (hex: string) => {
+  if (!hex) return "";
+  const cleanHex = hex.startsWith("0x") ? hex.slice(2) : hex;
+  let str = "";
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    str += String.fromCharCode(parseInt(cleanHex.substring(i, i + 2), 16));
+  }
+  return str;
+};
 
 export function useTokenInspector() {
   const { rpcUrl } = useSupraWallet();
@@ -44,9 +56,9 @@ export function useTokenInspector() {
 
     try {
       // If the user pasted a full token type (e.g., 0x123...::module::struct), extract just the address
-      const targetAddress = address.includes("::") ? address.split("::")[0] : address;
+      const targetAddress = address?.includes("::") ? address.split("::")[0] : address;
 
-      const isMainnet = rpcUrl ? rpcUrl.includes("mainnet") : true;
+      const isMainnet = rpcUrl ? rpcUrl?.includes("mainnet") : true;
       const proxyPathV3 = isMainnet ? "/api/rpc-v3/mainnet" : "/api/rpc-v3/testnet";
       
       let allResources: any[] = [];
@@ -107,7 +119,7 @@ export function useTokenInspector() {
         const data = resource.data;
 
         // 1. Detect Legacy Coins
-        if (rType.includes("0x1::coin::CoinInfo")) {
+        if (rType?.includes("::coin::CoinInfo")) {
           const typeMatch = rType.match(/<(.+)>/);
           const fullType = typeMatch ? typeMatch[1] : rType;
           
@@ -122,7 +134,24 @@ export function useTokenInspector() {
         }
 
         // 2. Detect Fungible Assets (FA)
-        if (rType === "0x1::fungible_asset::Metadata") {
+        if (rType?.endsWith("::fungible_asset::Metadata")) {
+          let isFrameworkWrapper = false;
+          let extractedLegacyCoin: string | undefined = undefined;
+
+          allResources.forEach((r: any) => {
+            if (r.type?.endsWith("::coin::PairedCoinType")) {
+              isFrameworkWrapper = true;
+              const typeData = r.data?.type || r.data;
+              if (typeData && typeData.account_address) {
+                const mod = hexToString(typeData.module_name);
+                const str = hexToString(typeData.struct_name);
+                extractedLegacyCoin = `${typeData.account_address}::${mod}::${str}`;
+              }
+            } else if (r.type?.endsWith("::coin::PairedFungibleAssetRefs")) {
+              isFrameworkWrapper = true;
+            }
+          });
+
           detectedTokens.push({
             type: targetAddress, // the resource is on the object address
             isLegacy: false,
@@ -131,6 +160,8 @@ export function useTokenInspector() {
             decimals: data.decimals,
             supply: data.supply?.vec?.[0]?.integer?.vec?.[0]?.value,
             creator: data.creator,
+            isWrapper: isFrameworkWrapper,
+            wrappedLegacyCoin: extractedLegacyCoin,
           });
         }
 
@@ -145,6 +176,7 @@ export function useTokenInspector() {
         let renouncedMint = false;
         let renouncedBurn = false;
         let renouncedTransfer = false;
+        let renouncedFreeze = false;
 
         let extractedFaAddress: string | undefined = undefined;
 
@@ -189,6 +221,7 @@ export function useTokenInspector() {
                 // If it is Option::none, track it for Renounce Proof
                 if (isMintKey) renouncedMint = true;
                 if (isBurnKey) renouncedBurn = true;
+                if (isFreezeKey) renouncedFreeze = true;
                 if (isTransferKey) renouncedTransfer = true;
               }
             } else if (typeof val === 'object' && val !== null) {
@@ -202,7 +235,7 @@ export function useTokenInspector() {
 
         if (hasMint || hasBurn || hasFreeze || hasTransfer) {
           detectedAdminCaps.push({
-            tokenType: "Unknown Token",
+            tokenType: extractedFaAddress || (rType?.includes('<') ? rType.split('<')[1].replace('>', '') : "Unknown Token"),
             resourcePath: rType,
             capabilities: {
               mint: hasMint,
@@ -214,10 +247,13 @@ export function useTokenInspector() {
           });
         }
         
-        // If we found ALL 3 core refs strictly set to Option::none, and no active refs, this FA is 100% verified safe
-        if (renouncedMint && renouncedBurn && renouncedTransfer && !hasMint && !hasBurn && !hasTransfer) {
+        // If we found ALL 4 core refs strictly set to Option::none, and no active refs, this FA is 100% verified safe
+        if (renouncedMint && renouncedBurn && renouncedTransfer && renouncedFreeze && !hasMint && !hasBurn && !hasTransfer && !hasFreeze) {
            // We use extractedFaAddress if available, otherwise fallback to targetAddress (assuming the FA metadata is at this object)
-           detectedRenouncedFAs.push(extractedFaAddress || targetAddress);
+           const faToRenounce = extractedFaAddress || targetAddress;
+           if (!detectedRenouncedFAs.includes(faToRenounce)) {
+             detectedRenouncedFAs.push(faToRenounce);
+           }
         }
       });
 
@@ -242,6 +278,6 @@ export function useTokenInspector() {
     adminCapabilities,
     renouncedTokens,
     scanAccount,
-    network: rpcUrl ? (rpcUrl.includes("mainnet") ? "mainnet" : "testnet") : "mainnet",
+    network: rpcUrl ? (rpcUrl?.includes("mainnet") ? "mainnet" : "testnet") : "mainnet",
   };
 }

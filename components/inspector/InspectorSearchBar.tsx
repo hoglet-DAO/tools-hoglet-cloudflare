@@ -5,7 +5,7 @@ import { useState } from "react";
 interface InspectorSearchBarProps {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
-  handleInspect: () => void;
+  handleInspect: (e?: React.FormEvent | string) => void;
   isScanning: boolean;
   recentSearches: string[];
   handleRecentClick: (query: string) => void;

@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 
 export default function BentoHome() {
   const { rpcUrl } = useSupraWallet();
-  const isMainnet = rpcUrl.includes("mainnet");
+  const isMainnet = rpcUrl?.includes("mainnet");
   const router = useRouter();
 
   return (

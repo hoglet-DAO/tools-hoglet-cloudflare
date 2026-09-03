@@ -13,12 +13,13 @@ interface TokenInfo {
 
 interface CapabilityCardProps {
   cap: {
+    tokenType: string;
     resourcePath: string;
     capabilities: { [key: string]: boolean };
     faAddress?: string;
   };
   matchedToken: TokenInfo | undefined;
-  getExplorerLink: (typeString: string) => string;
+  getExplorerLink: (typeString: string, forcedType?: "address" | "fa" | "coin") => string;
   shortenType: (typeStr: string) => string;
   copiedType: string | null;
   handleCopy: (e: React.MouseEvent, text: string) => void;
@@ -34,6 +35,16 @@ export const CapabilityCard = ({
   handleCopy,
   handleGoToInteractor
 }: CapabilityCardProps) => {
+  const activePowersList = Object.entries(cap.capabilities)
+    .filter(([_, value]) => value)
+    .map(([key]) => key.toUpperCase());
+  
+  const tokenNameDisplay = matchedToken 
+    ? `${matchedToken.name} (${matchedToken.symbol})` 
+    : (cap.resourcePath?.includes('<') ? cap.resourcePath.split('<')[1].replace('>', '') : 'specified below');
+
+  const isFrameworkComponent = cap.resourcePath.startsWith("0x1::") || cap.resourcePath.startsWith("0x2::") || cap.resourcePath.startsWith("0x3::");
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
@@ -41,6 +52,8 @@ export const CapabilityCard = ({
       className="bg-zinc-900/50 border border-amm-pink/20 rounded-2xl p-6 relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-amm-pink/5 rounded-bl-full -mr-16 -mt-16 pointer-events-none"></div>
+      
+      {/* Header */}
       <div className="mb-4">
         <h3 className="text-lg font-bold text-white mb-2">
           {matchedToken ? `Powers for ${matchedToken.name} (${matchedToken.symbol})` : "Capabilities Detected"}
@@ -68,8 +81,37 @@ export const CapabilityCard = ({
           </div>
         )}
       </div>
+
+      {/* Summary / Warning Block */}
+      {activePowersList.length > 0 && (
+        <div className="mb-6">
+          {isFrameworkComponent ? (
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-start gap-3">
+              <ShieldAlert className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-blue-400 mb-1">FRAMEWORK COMPONENT</p>
+                <p className="text-xs text-blue-200/80 leading-relaxed">
+                  This capability for <strong className="text-blue-300 break-all">{tokenNameDisplay}</strong> is currently held by the official blockchain framework (<code>{cap.resourcePath.split("::")[0]}</code>). Because it is inside an immutable framework vault and not a user's wallet, it is generally considered <strong>safe and renounced</strong> from human manipulation.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
+              <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-red-400 mb-1">SECURITY SUMMARY: CRITICAL WARNING</p>
+                <p className="text-xs text-red-200/80 leading-relaxed">
+                  The owner of the address <a href={getExplorerLink(cap.resourcePath.split('::')[0], "address")} target="_blank" rel="noopener noreferrer" className="bg-red-500/20 px-1.5 py-0.5 rounded text-red-300 font-mono border border-red-500/30 hover:bg-red-500/40 transition-colors underline decoration-red-500/50 underline-offset-2">{shortenType(cap.resourcePath.split('::')[0])}</a> has active capabilities to <strong>{activePowersList.join(", ")}</strong> the token <strong className="text-red-300 break-all">{tokenNameDisplay}</strong> (<a href={getExplorerLink(cap.tokenType, cap.tokenType.includes("::") ? "coin" : "fa")} target="_blank" rel="noopener noreferrer" className="text-[10px] font-mono text-red-400/80 hover:text-red-300 transition-colors underline decoration-red-500/30 underline-offset-2">{shortenType(cap.tokenType)}</a>). This token is NOT renounced. They can manipulate the supply and control user assets at any time. Exercise extreme caution.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Technical Breakdown */}
       <div className="mb-6">
-        <h4 className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-3">Technical Identifier</h4>
+        <h4 className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-3">Technical Breakdown</h4>
         <TechnicalIdentifierBlock 
           typeString={cap.resourcePath} 
           getExplorerLink={getExplorerLink} 
@@ -79,6 +121,7 @@ export const CapabilityCard = ({
         />
       </div>
       
+      {/* Active Powers List */}
       <div className="flex flex-col gap-3">
         {Object.entries(cap.capabilities).map(([key, value]) => {
           if (!value) return null;
@@ -89,58 +132,25 @@ export const CapabilityCard = ({
             return { icon: "🔄", color: "border-purple-500/30 bg-purple-500/10 text-purple-400", desc: "Can forcefully move tokens between users' accounts." };
           };
           const style = getIconAndColor(key);
+          const overrideColor = isFrameworkComponent 
+            ? "border-gray-600/30 bg-gray-600/10 text-gray-500 grayscale opacity-60" 
+            : style.color;
+            
           return (
-            <div key={key} className={`flex items-start gap-3 p-3 rounded-xl border ${style.color}`}>
-              <span className="text-xl mt-0.5 leading-none">{style.icon}</span>
+            <div key={key} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${overrideColor}`}>
+              <span className={`text-xl mt-0.5 leading-none ${isFrameworkComponent ? "opacity-50" : ""}`}>{style.icon}</span>
               <div className="flex flex-col">
-                <span className="font-bold capitalize text-sm">{key} Ref</span>
-                <span className="text-xs opacity-80 mt-1 leading-relaxed">{style.desc}</span>
+                <span className={`font-bold capitalize text-sm ${isFrameworkComponent ? "text-gray-400 line-through decoration-gray-500" : ""}`}>
+                  {key} Ref
+                </span>
+                <span className="text-xs opacity-80 mt-1 leading-relaxed">
+                  {isFrameworkComponent ? "This capability is safely locked in the framework vault." : style.desc}
+                </span>
               </div>
             </div>
           );
         })}
       </div>
-      
-      {(() => {
-        const activePowers = Object.entries(cap.capabilities)
-          .filter(([_, value]) => value)
-          .map(([key]) => key.toUpperCase());
-        
-        if (activePowers.length > 0) {
-          const tokenNameDisplay = matchedToken 
-            ? `${matchedToken.name} (${matchedToken.symbol})` 
-            : (cap.resourcePath.includes('<') ? cap.resourcePath.split('<')[1].replace('>', '') : 'specified above');
-
-          const isFrameworkComponent = cap.resourcePath.startsWith("0x1::") || cap.resourcePath.startsWith("0x2::") || cap.resourcePath.startsWith("0x3::");
-
-          if (isFrameworkComponent) {
-            return (
-              <div className="mt-5 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-start gap-3">
-                <ShieldAlert className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-bold text-blue-400 mb-1">FRAMEWORK COMPONENT</p>
-                  <p className="text-xs text-blue-200/80 leading-relaxed">
-                    This capability for <strong className="text-blue-300 break-all">{tokenNameDisplay}</strong> is currently held by the official blockchain framework (<code>{cap.resourcePath.split("::")[0]}</code>). Because it is inside an immutable framework vault and not a user's wallet, it is generally considered <strong>safe and renounced</strong> from human manipulation.
-                  </p>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div className="mt-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-red-400 mb-1">CRITICAL WARNING</p>
-                <p className="text-xs text-red-200/80 leading-relaxed">
-                  The owner of this address has active capabilities to <strong>{activePowers.join(", ")}</strong> the token <strong className="text-red-300 break-all">{tokenNameDisplay}</strong>. This token is NOT renounced. They can manipulate the supply and control user assets at any time. Exercise extreme caution.
-                </p>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
       
       <button 
         onClick={() => handleGoToInteractor(cap.resourcePath)}

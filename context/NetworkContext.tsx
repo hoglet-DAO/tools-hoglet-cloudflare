@@ -48,7 +48,7 @@ function NetworkStateInitializer({
   // Este efecto se ejecuta SOLO en el cliente y sincroniza el estado con la URL
   useEffect(() => {
     const urlNetwork = searchParams.get('network') as string | null;
-    const newNetwork = (urlNetwork && VALID_NETWORKS.includes(urlNetwork as NetworkType))
+    const newNetwork = (urlNetwork && VALID_NETWORKS?.includes(urlNetwork as NetworkType))
       ? urlNetwork as NetworkType
       : DEFAULT_NETWORK;
 
@@ -67,7 +67,7 @@ export const NetworkProvider: React.FC<{ children: ReactNode }> = ({ children })
   const pathname = usePathname();
 
   const changeNetwork = useCallback((newNetwork: NetworkType) => {
-    if (!VALID_NETWORKS.includes(newNetwork)) return;
+    if (!VALID_NETWORKS?.includes(newNetwork)) return;
 
     // NO actualizamos el estado local aquí para evitar conflictos con la URL.
     // Dejamos que el router cambie la URL, y NetworkStateInitializer 

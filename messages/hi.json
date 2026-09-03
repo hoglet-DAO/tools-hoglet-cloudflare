@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | स्मार्ट कॉन्ट्रैक्ट इंटरैक्टर का सर्वश्रेष्ठ",
+    "description": "सुप्रा इकोसिस्टम के लिए विशेष रूप से निर्मित पेशेवर स्मार्ट कॉन्ट्रैक्ट इंटरैक्टर, परीक्षण वातावरण और इंटरैक्शन सूट। अपना वॉलेट कनेक्ट करें, मॉड्यूल देखें और टेस्टनेट तथा मेननेट पर सहजता से लेनदेन निष्पादित करें।",
+    "keywords": "Supra, Blockchain, स्मार्ट कॉन्ट्रैक्ट, Explorer, DApp, SupraOracles, Move Language, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "शुरू करें",
+    "createTask": "कार्य बनाएँ",
+    "marketplace": "मार्केटप्लेस",
+    "myTasks": "मेरे कार्य",
+    "networkStatus": "नेटवर्क स्थिति",
+    "nextEpochIn": "अगला युग कितनी देर में",
+    "automationFee": "ऑटोमेशन शुल्क",
+    "holdToSwitch": "{networkName} पर स्विच करने के लिए दबाए रखें",
+    "mainnetShort": "मेन",
+    "testnetShort": "टेस्ट"
+  },
+  "translation": {
+    "loading": "लोड हो रहा है...",
+    "getFreeSupra": "मुफ़्त Supra प्राप्त करें"
+  }
+}

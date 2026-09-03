@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | Interactor Smart Contract Terbaik",
+    "description": "Smart contract interactor profesional, lingkungan pengujian, dan rangkaian interaksi yang dibuat khusus untuk ekosistem Supra. Hubungkan dompet Anda, jelajahi modul, dan jalankan transaksi dengan lancar di Testnet dan Mainnet.",
+    "keywords": "Supra, Blockchain, Smart Contract, Explorer, DApp, SupraOracles, Move Language, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "Mulai",
+    "createTask": "Buat Tugas",
+    "marketplace": "Marketplace",
+    "myTasks": "Tugas Saya",
+    "networkStatus": "Status Jaringan",
+    "nextEpochIn": "Era berikutnya dalam",
+    "automationFee": "Biaya Otomatisasi",
+    "holdToSwitch": "Tahan untuk beralih ke {networkName}",
+    "mainnetShort": "Main",
+    "testnetShort": "Tes"
+  },
+  "translation": {
+    "loading": "Memuat...",
+    "getFreeSupra": "Dapatkan Supra Gratis"
+  }
+}

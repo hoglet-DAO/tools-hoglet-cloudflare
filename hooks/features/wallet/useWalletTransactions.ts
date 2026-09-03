@@ -31,7 +31,7 @@ export const useWalletTransactions = (
     // Default to testnet (6) unless the RPC URL explicitly matches mainnet
     const isMainnet = 
       rpcUrl === process.env.NEXT_PUBLIC_RPC_URL_MAINNET || 
-      rpcUrl.includes("mainnet");
+      rpcUrl?.includes("mainnet");
     const chainIdStr = isMainnet ? '8' : '6';
 
     // Serialize arguments using BCS

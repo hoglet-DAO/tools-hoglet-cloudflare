@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Copy, Check, Search } from "lucide-react";
 import { TechnicalIdentifierBlock } from "./TechnicalIdentifierBlock";
 
 interface TokenInfo {
@@ -9,15 +9,19 @@ interface TokenInfo {
   decimals: number;
   supply?: string;
   isLegacy: boolean;
+  creator?: string;
+  isWrapper?: boolean;
+  wrappedLegacyCoin?: string;
 }
 
 interface TokenCardProps {
   token: TokenInfo;
-  getExplorerLink: (typeString: string) => string;
+  getExplorerLink: (typeString: string, forcedType?: "address" | "fa" | "coin") => string;
   shortenType: (typeStr: string) => string;
   copiedType: string | null;
   handleCopy: (e: React.MouseEvent, text: string) => void;
   isFullyRenounced?: boolean;
+  onInspect?: (address: string) => void;
 }
 
 export const TokenCard = ({ 
@@ -26,7 +30,8 @@ export const TokenCard = ({
   shortenType, 
   copiedType, 
   handleCopy,
-  isFullyRenounced = false
+  isFullyRenounced = false,
+  onInspect
 }: TokenCardProps) => {
   return (
     <motion.div 
@@ -76,6 +81,52 @@ export const TokenCard = ({
                 All administrative powers (Mint, Burn, Transfer) are explicitly destroyed. <strong className="text-white bg-green-500/20 px-1 rounded">This badge is the ONLY way to know a token is 100% safe from manipulation</strong>, a mathematical guarantee unique to the Fungible Asset design.
               </p>
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {!token.isLegacy && (token.isWrapper || (token.creator && (token.creator === "0x1" || token.creator === "0x0000000000000000000000000000000000000000000000000000000000000001"))) && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 relative z-10 overflow-hidden rounded-xl border border-orange-500/40 bg-orange-500/10 p-4"
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-bold text-orange-400 uppercase tracking-widest flex items-center gap-2">
+              ⚠️ Framework-Generated Wrapper
+            </p>
+            <p className="text-xs text-orange-200/90 leading-relaxed">
+              This Fungible Asset was generated internally by the core blockchain framework (<code>0x1</code>). <strong>It is highly likely to be a wrapper for a Legacy Coin</strong> or a native gas token. Its true Mint/Burn capabilities might be hidden on the original Legacy Coin architecture. Auditing this object alone is insufficient to guarantee safety.
+            </p>
+            
+            {token.wrappedLegacyCoin && (
+              <div className="mt-2 p-3 bg-orange-950/50 rounded-lg border border-orange-500/20">
+                <p className="text-[10px] text-orange-300/70 font-bold uppercase mb-2">Original Legacy Coin Detected:</p>
+                <div className="flex items-center justify-between gap-2 bg-black/40 p-2 rounded-md border border-orange-500/10">
+                  <span className="text-xs font-mono text-orange-200 truncate">{shortenType(token.wrappedLegacyCoin)}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button 
+                      onClick={(e) => handleCopy(e, token.wrappedLegacyCoin!)}
+                      className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded transition-colors"
+                      title="Copy Address"
+                    >
+                      {copiedType === token.wrappedLegacyCoin ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                    {onInspect && (
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onInspect(token.wrappedLegacyCoin!);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-black rounded transition-colors text-xs font-bold"
+                      >
+                        <Search className="w-3 h-3" /> Inspect
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       )}

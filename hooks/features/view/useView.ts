@@ -42,7 +42,7 @@ export default function useView<TResult = any[]>(): UseViewReturn<TResult> {
     setLoading(true);
     setError(null);
     try {
-      const isMainnet = rpcUrl.includes("mainnet");
+      const isMainnet = rpcUrl?.includes("mainnet");
       const proxyPathV1 = isMainnet ? "/api/rpc/mainnet" : "/api/rpc/testnet";
 
       const response = await fetch(`${proxyPathV1}/view`, {

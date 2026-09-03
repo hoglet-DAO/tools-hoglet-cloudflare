@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | Mafi Kyakkyawan Mai Ma'amala da Smart Contract",
+    "description": "Kwararrun mai ma'amala da smart contracts, yanayin gwaji, da kuma kayan aikin mu'amala waɗanda aka gina musanya ga tsarin Supra. Haɗa walat ɗinka, bincika modules, ka kuma aiwatar da ma'amoli ba tare da matsala ba a kan Testnet da Mainnet.",
+    "keywords": "Supra, Blockchain, Smart Contracts, Explorer, DApp, SupraOracles, Move Language, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "Fara",
+    "createTask": "Ƙirƙiri Aiki",
+    "marketplace": "Kasuwa",
+    "myTasks": "Ayyukana",
+    "networkStatus": "Matsayin Hanyar Sadarwa",
+    "nextEpochIn": "Lokaci na gaba a cikin",
+    "automationFee": "Kudin Sarrafa Kai",
+    "holdToSwitch": "Riƙe don canzawa zuwa {networkName}",
+    "mainnetShort": "Babba",
+    "testnetShort": "Gwaji"
+  },
+  "translation": {
+    "loading": "Ana lodawa...",
+    "getFreeSupra": "Samu Supra Kyauta"
+  }
+}

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AiOutlineClose } from "react-icons/ai";
 import { HiMenuAlt4 } from "react-icons/hi";
 import { useNetwork } from '@/context/NetworkContext';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 // Existing Local Components
 import NetworkSwitchButton from '@/components/EnvironmentToggleButton';
@@ -17,7 +17,8 @@ import TestnetIndicator from '@/components/bar/TestnetIndicator';
 
 export default function Bar() {
   const [toggleMenu, setToggleMenu] = useState(false);
-  const [language, setLanguage] = useState('en');
+  const activeLocale = useLocale();
+  const [language, setLanguage] = useState(activeLocale);
   const { network } = useNetwork();
   const t = useTranslations('translation');
 

@@ -46,7 +46,7 @@ export function FunctionForm({
   const getModuleDetails = () => {
     let modAddr = contractAddress || "unknown";
     let modName = selectedModule?.name || "unknown";
-    if (selectedModule?.name && selectedModule.name.includes("::")) {
+    if (selectedModule?.name && selectedModule.name?.includes("::")) {
       const parts = selectedModule.name.split("::");
       modAddr = parts[0];
       modName = parts[1];
@@ -84,7 +84,7 @@ export function FunctionForm({
         .map((type: string, index: number) => ({
           index,
           type,
-          example_value_format: type.includes("0x1::string::String") ? "0x1::supra_coin::SupraCoin" : (type === "bool" ? "true/false" : "any valid Move type representation")
+          example_value_format: type?.includes("0x1::string::String") ? "0x1::supra_coin::SupraCoin" : (type === "bool" ? "true/false" : "any valid Move type representation")
         }))
     };
     
@@ -267,6 +267,16 @@ export function FunctionForm({
                           title="Click to auto-fill SupraCoin type string"
                         >
                           <span className="opacity-70 font-bold">✨ Example:</span> 0x1::supra_coin::SupraCoin
+                        </button>
+                      )}
+                      {(paramType === "0x1::object::Object<0x1::fungible_asset::Metadata>" || paramType === "0x1::object::Object<0x1::object::ObjectCore>") && (
+                        <button 
+                          type="button"
+                          onClick={() => setFunctionParams({...functionParams, [idx]: "0xa"})}
+                          className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/40 transition-all text-[10px] flex items-center gap-1 cursor-pointer font-normal whitespace-nowrap shadow-[0_0_10px_rgba(6,182,212,0.1)]"
+                          title="Click to auto-fill Supra Native FA (0xa)"
+                        >
+                          <span className="opacity-70 font-bold">✨ Supra FA:</span> 0xa
                         </button>
                       )}
                     </label>

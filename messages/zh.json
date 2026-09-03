@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | 终极智能合约交互器",
+    "description": "专为 Supra 生态系统打造的专业智能合约交互器、测试环境和交互套件。连接您的钱包，探索模块，并在测试网和主网上无缝执行交易。",
+    "keywords": "Supra, 区块链, 智能合约, Explorer, DApp, SupraOracles, Move 语言, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "开始使用",
+    "createTask": "创建任务",
+    "marketplace": "市场",
+    "myTasks": "我的任务",
+    "networkStatus": "网络状态",
+    "nextEpochIn": "下一周期倒计时",
+    "automationFee": "自动化费用",
+    "holdToSwitch": "长按切换到 {networkName}",
+    "mainnetShort": "主网",
+    "testnetShort": "测试"
+  },
+  "translation": {
+    "loading": "加载中...",
+    "getFreeSupra": "免费获取 Supra"
+  }
+}

@@ -14,7 +14,7 @@ export function parseMoveArgument(val: string, paramType: string): any {
     const innerType = innerMatch ? innerMatch[1].trim() : "u8";
 
     // If it's a vector<u8> and starts with 0x, it's likely a hex string bytes array.
-    if (innerType === "u8" && trimmed.startsWith("0x") && !trimmed.includes(",")) {
+    if (innerType === "u8" && trimmed.startsWith("0x") && !trimmed?.includes(",")) {
       // Return as hex string directly, or parse into number array?
       // Starkey usually accepts hex strings for vector<u8>. Let's keep it as hex string.
       return trimmed;
@@ -61,7 +61,7 @@ export function parseMoveArgument(val: string, paramType: string): any {
   // 5. Default (Address, String, Structs, etc) -> Return String type
   if (typeof trimmed === "string") {
     // If it looks like a struct (address::module::name) and is missing 0x
-    if (trimmed.includes("::") && !trimmed.startsWith("0x")) {
+    if (trimmed?.includes("::") && !trimmed.startsWith("0x")) {
       return "0x" + trimmed;
     }
     // If it is an address and is missing 0x

@@ -85,7 +85,7 @@ export default function TaskWizard() {
       // Map the generic type params to an array of strings
       const rawTypeArgs = genericParamList.map((_: any, idx: number) => {
         const val = typeParams[idx] || "";
-        if (val.includes("::") && !val.startsWith("0x")) {
+        if (val?.includes("::") && !val.startsWith("0x")) {
           return "0x" + val;
         }
         return val;

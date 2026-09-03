@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | L'interacteur de smart contracts ultime",
+    "description": "Interacteur de smart contracts professionnel, environnement de test et suite d'interaction conçus spécialement pour l'écosystème Supra. Connectez votre portefeuille, explorez les modules et exécutez des transactions en toute fluidité sur Testnet et Mainnet.",
+    "keywords": "Supra, Blockchain, Smart Contracts, Explorer, DApp, SupraOracles, Move Language, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "Commencer",
+    "createTask": "Créer une tâche",
+    "marketplace": "Place de marché",
+    "myTasks": "Mes tâches",
+    "networkStatus": "État du réseau",
+    "nextEpochIn": "Prochaine époque dans",
+    "automationFee": "Frais d'automatisation",
+    "holdToSwitch": "Maintenez pour basculer vers {networkName}",
+    "mainnetShort": "Main",
+    "testnetShort": "Test"
+  },
+  "translation": {
+    "loading": "Chargement...",
+    "getFreeSupra": "Obtenir du Supra gratuit"
+  }
+}

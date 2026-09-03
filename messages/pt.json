@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | O Melhor Interator de Contratos Inteligentes",
+    "description": "Interator profissional de contratos inteligentes, ambiente de testes e suíte de interação construídos especificamente para o ecossistema Supra. Conecte sua carteira, explore módulos e execute transações sem problemas na Testnet e na Mainnet.",
+    "keywords": "Supra, Blockchain, Contratos Inteligentes, Explorer, DApp, SupraOracles, Linguagem Move, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "Começar",
+    "createTask": "Criar Tarefa",
+    "marketplace": "Marketplace",
+    "myTasks": "Minhas Tarefas",
+    "networkStatus": "Status da Rede",
+    "nextEpochIn": "Próxima época em",
+    "automationFee": "Taxa de Automação",
+    "holdToSwitch": "Segure para mudar para {networkName}",
+    "mainnetShort": "Main",
+    "testnetShort": "Test"
+  },
+  "translation": {
+    "loading": "Carregando...",
+    "getFreeSupra": "Obter Supra Grátis"
+  }
+}

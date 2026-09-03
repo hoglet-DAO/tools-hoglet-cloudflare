@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "Supra Interact | 최고의 스마트 컨트랙트 인터랙터",
+    "description": "Supra 생태계를 위해 특별히 제작된 전문 스마트 컨트랙트 인터랙터, 테스트 환경 및 상호작용 스위트입니다. 지갑을 연결하고, 모듈을 탐색하고, 테스트넷과 메인넷에서 원활하게 트랜잭션을 실행하세요.",
+    "keywords": "Supra, 블록체인, 스마트 컨트랙트, Explorer, DApp, SupraOracles, Move 언어, Web3, Hoglet DAO"
+  },
+  "Dashboard": {
+    "getStarted": "시작하기",
+    "createTask": "작업 만들기",
+    "marketplace": "마켓플레이스",
+    "myTasks": "내 작업",
+    "networkStatus": "네트워크 상태",
+    "nextEpochIn": "다음 에포크까지",
+    "automationFee": "자동화 수수료",
+    "holdToSwitch": "길게 눌러 {networkName}(으)로 전환",
+    "mainnetShort": "메인",
+    "testnetShort": "테스트"
+  },
+  "translation": {
+    "loading": "로딩 중...",
+    "getFreeSupra": "무료 Supra 받기"
+  }
+}

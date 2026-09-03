@@ -31,7 +31,7 @@ export function useContractModules() {
     setCurrentAddr(addr);
 
     try {
-      const isMainnet = rpcUrl.includes("mainnet");
+      const isMainnet = rpcUrl?.includes("mainnet");
       const proxyPathV3 = isMainnet ? "/api/rpc-v3/mainnet" : "/api/rpc-v3/testnet";
       const proxyPathV1 = isMainnet ? "/api/rpc/mainnet" : "/api/rpc/testnet";
 
@@ -88,7 +88,7 @@ export function useContractModules() {
     setIsLoadingMore(true);
 
     try {
-      const isMainnet = currentRpcUrl.includes("mainnet");
+      const isMainnet = currentRpcUrl?.includes("mainnet");
       const proxyPathV3 = isMainnet ? "/api/rpc-v3/mainnet" : "/api/rpc-v3/testnet";
 
       const res = await fetch(`${proxyPathV3}/accounts/${currentAddr}/modules?count=100&start=${moduleCursor}`);

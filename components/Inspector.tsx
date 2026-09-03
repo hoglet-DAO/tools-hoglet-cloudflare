@@ -10,6 +10,7 @@ import { InfoModal } from "./inspector/InfoModal";
 import { TokenCard } from "./inspector/TokenCard";
 import { CapabilityCard } from "./inspector/CapabilityCard";
 import { InspectorSearchBar } from "./inspector/InspectorSearchBar";
+import { routing } from "@/i18n/routing";
 
 export default function Inspector() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,7 +39,7 @@ export default function Inspector() {
   }, []); // Run only on mount
 
   const shortenType = (typeStr: string) => {
-    if (typeStr.includes('::')) {
+    if (typeStr?.includes('::')) {
       const parts = typeStr.split('::');
       const address = parts[0];
       const shortAddress = address.length > 12 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
@@ -55,18 +56,39 @@ export default function Inspector() {
     setTimeout(() => setCopiedType(null), 2000);
   };
 
-  const getExplorerLink = (typeString: string) => {
+  const getExplorerLink = (typeString: string, forcedType?: "address" | "fa" | "coin") => {
     const match = typeString.match(/<([^>]+)>/);
     const target = match ? match[1] : typeString;
-    return `https://suprascan.io/coin/${target}`;
+    
+    if (forcedType) {
+      return `https://suprascan.io/${forcedType}/${target}`;
+    }
+    
+    if (target.includes("::")) {
+      return `https://suprascan.io/coin/${target}`;
+    }
+    
+    // Default for hex addresses without :: is FA
+    return `https://suprascan.io/fa/${target}`;
   };
 
-  const handleInspect = () => {
-    const query = searchQuery.trim();
+  const handleInspect = (eOrQuery?: React.FormEvent | string) => {
+    if (eOrQuery && typeof eOrQuery !== "string" && 'preventDefault' in eOrQuery) {
+      eOrQuery.preventDefault();
+    }
+
+    let query = typeof eOrQuery === "string" ? eOrQuery.trim() : searchQuery.trim();
+    
+    // Automatically truncate if it's a full struct path (e.g. 0x...::DAWGZ::DAWGZ)
+    if (query.includes("::")) {
+      query = query.split("::")[0];
+    }
+    
     if (!query) {
       return;
     }
     
+    setSearchQuery(query);
     scanAccount(query);
 
     // Update URL without full page reload
@@ -100,7 +122,7 @@ export default function Inspector() {
       const moduleName = parts[1];
       
       const locale = pathname.split('/')[1];
-      const prefix = locale && ['en', 'es'].includes(locale) ? `/${locale}` : '';
+      const prefix = locale && (routing.locales as readonly string[]).includes(locale) ? `/${locale}` : '';
       router.push(`${prefix}/interactor?address=${contractAddress}&module=${moduleName}`);
     }
   };
@@ -178,7 +200,9 @@ export default function Inspector() {
               <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-1">
                 <Coins className="w-5 h-5 text-cyan-400" /> Token Details & Metadata ({ownedTokens.length})
               </h2>
-              <p className="text-sm text-gray-500">Public information about the token including supply, decimals, and its core address.</p>
+              <p className="text-sm text-gray-500">
+                Detected Token architectures (Legacy Coin or Fungible Asset Object) present at this address. Displays public metadata, supply, and structural identifiers.
+              </p>
             </div>
             {ownedTokens.map((token, idx) => (
               <TokenCard 
@@ -188,7 +212,8 @@ export default function Inspector() {
                 shortenType={shortenType}
                 copiedType={copiedType}
                 handleCopy={handleCopy}
-                isFullyRenounced={renouncedTokens.includes(token.type)}
+                isFullyRenounced={renouncedTokens?.includes(token.type)}
+                onInspect={handleInspect}
               />
             ))}
             {hasScanned && ownedTokens.length === 0 && (
@@ -208,7 +233,7 @@ export default function Inspector() {
             </div>
             {adminCapabilities.map((cap, idx) => {
               const matchedToken = ownedTokens.find(t => 
-                cap.resourcePath.includes(t.type) || 
+                cap.resourcePath?.includes(t.type) || 
                 (cap.faAddress && cap.faAddress === t.type)
               );
               return (

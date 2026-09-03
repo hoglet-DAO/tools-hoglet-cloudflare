@@ -13,13 +13,13 @@ export const resolveIpfsUri = (uri: string | undefined | null): string => {
   }
 
   // Interceptar gateways de IPFS problemáticos (como w3s.link o nftstorage.link)
-  if (uri.includes('.ipfs.w3s.link')) {
+  if (uri?.includes('.ipfs.w3s.link')) {
     const match = uri.match(/https:\/\/([^.]+)\.ipfs\.w3s\.link/);
     if (match && match[1]) {
       return `${PREFERRED_IPFS_GATEWAY}${match[1]}`;
     }
   }
-  if (uri.includes('.ipfs.nftstorage.link')) {
+  if (uri?.includes('.ipfs.nftstorage.link')) {
     const match = uri.match(/https:\/\/([^.]+)\.ipfs\.nftstorage\.link/);
     if (match && match[1]) {
       return `${PREFERRED_IPFS_GATEWAY}${match[1]}`;
