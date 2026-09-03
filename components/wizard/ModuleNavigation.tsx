@@ -47,9 +47,9 @@ export function ModuleNavigation({
     if (currentPage > 1) setCurrentPage(p => p - 1);
   };
 
-  const isImmutable = authKey === "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const isResourceAccount = authKey === "0x0000000000000000000000000000000000000000000000000000000000000000";
   // The contract is controlled by an external admin/multisig if authKey is not zeros and authKey !== contractAddress
-  const isExternalAdmin = !isImmutable && authKey && contractAddress && authKey.toLowerCase() !== contractAddress.toLowerCase();
+  const isExternalAdmin = !isResourceAccount && authKey && contractAddress && authKey.toLowerCase() !== contractAddress.toLowerCase();
 
   return (
     <div className="p-4 border-b border-white/10 bg-black/40 rounded-t-2xl z-10 flex flex-col gap-3">
@@ -70,16 +70,16 @@ export function ModuleNavigation({
         {authKey && (
           <div className="ml-auto group relative flex items-center cursor-help">
             <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
-              isImmutable 
-                ? "bg-green-500/20 text-green-400 border-green-500/30" 
+              isResourceAccount 
+                ? "bg-blue-500/20 text-blue-400 border-blue-500/30" 
                 : isExternalAdmin 
                   ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
                   : "bg-amber-500/20 text-amber-400 border-amber-500/30"
             }`}>
-              {isImmutable ? (
+              {isResourceAccount ? (
                 <>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                  Immutable
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  Resource Account
                 </>
               ) : isExternalAdmin ? (
                 <>
@@ -94,8 +94,8 @@ export function ModuleNavigation({
               )}
             </span>
             <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl text-xs text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              {isImmutable 
-                ? "This account has burned its authentication key (0x0). It is fully decentralized and its modules cannot be upgraded." 
+              {isResourceAccount 
+                ? "This account has no direct private key (AuthKey is 0x0). It may be permanently renounced, OR it could be a Resource Account controlled by a SignerCapability stored in another contract (like a multisig)." 
                 : isExternalAdmin 
                   ? "This contract's authentication key has been rotated to another address. Upgrades are controlled by an external admin or multisig."
                   : "This contract has an active authentication key, meaning the deployer can still upgrade these modules or sign transactions."}

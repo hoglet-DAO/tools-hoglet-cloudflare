@@ -11,6 +11,7 @@ interface AddressInputProps {
   onConnect: () => void;
   onDisconnect: () => void;
   glassStyle: string;
+  recentSearches?: string[];
 }
 
 export function AddressInput({
@@ -22,6 +23,7 @@ export function AddressInput({
   onConnect,
   onDisconnect,
   glassStyle,
+  recentSearches = [],
 }: AddressInputProps) {
   return (
     <motion.div 
@@ -66,21 +68,44 @@ export function AddressInput({
            </div>
         </div>
 
-        {/* Popular Suggestions Pills */}
-        <div className="flex gap-2 mt-4 flex-wrap justify-center sm:justify-start items-center">
-          <span className="text-gray-500 text-sm font-semibold mr-1">Popular:</span>
-          {['0x1', '0x3', '0x4'].map((addr) => (
-            <button
-              key={addr}
-              onClick={() => {
-                setManualAddress(addr);
-                onScan(addr);
-              }}
-              className="px-4 py-1.5 bg-black/40 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 rounded-full text-xs font-mono text-gray-300 hover:text-cyan-300 transition-all shadow-sm hover:shadow-[0_0_10px_rgba(6,182,212,0.3)]"
-            >
-              {addr}
-            </button>
-          ))}
+        {/* Suggestions & Recent Searches */}
+        <div className="flex flex-col gap-3 mt-4">
+          {recentSearches.length > 0 && (
+            <div className="flex gap-2 flex-wrap justify-center sm:justify-start items-center">
+              <span className="text-cyan-500/70 text-xs font-bold uppercase tracking-wider mr-1 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Recent:
+              </span>
+              {recentSearches.map((addr) => (
+                <button
+                  key={`recent-${addr}`}
+                  onClick={() => {
+                    setManualAddress(addr);
+                    onScan(addr);
+                  }}
+                  className="px-3 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-400/50 rounded-full text-[10px] sm:text-xs font-mono text-cyan-400 transition-all shadow-sm"
+                  title={addr}
+                >
+                  {addr.length > 12 ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : addr}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start items-center">
+            <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mr-1">Popular:</span>
+            {['0x1', '0x3', '0x4'].map((addr) => (
+              <button
+                key={addr}
+                onClick={() => {
+                  setManualAddress(addr);
+                  onScan(addr);
+                }}
+                className="px-4 py-1.5 bg-black/40 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/50 rounded-full text-[10px] sm:text-xs font-mono text-gray-300 hover:text-cyan-300 transition-all shadow-sm"
+              >
+                {addr}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </motion.div>

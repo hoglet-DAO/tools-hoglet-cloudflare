@@ -40,6 +40,14 @@ Example of an exported function:
 - **type_args**: An array representing the generic types required by the function (e.g., \`<T>\`).
 - **args**: The runtime arguments required by the function. The \`type\` field specifies the expected Move type (e.g., \`u64\`, \`address\`, \`bool\`, \`0x1::string::String\`, or vectors).
 
+## Token Inspector & Move Security
+When interacting with the Token Inspector, AI agents should understand the nuances of Move security on Supra/Aptos regarding Master Keys (Refs: Mint, Burn, Freeze, Transfer).
+
+- **Legacy Coins (0x1::coin):** Master Keys are standalone capabilities. If the Inspector reports "No Admin Refs", it only guarantees they are not in the scanned wallet. The developer may have hidden them in a secondary smart contract. Therefore, the absence of keys does NOT guarantee a Legacy Coin is safe (Hide-and-Seek danger).
+- **Fungible Assets (0x1::fungible_asset):** Modern FAs use a centralized Metadata Object. If a developer uses a secure framework factory, the keys are mathematically destroyed and stored as \`Option::none\` directly on the Metadata Object. If the Inspector reports a "100% Verified Safe" badge, it means it detected these explicitly destroyed keys, providing mathematical proof that the token is rug-pull proof.
+
+*For complete official documentation on the Token Inspector, visit: https://docs.hoglet.xyz/docs/products/inspector*
+
 ## TypeScript SDK Examples
 When assisting users with writing scripts for this interactor using the official \`supra-l1-sdk\`, use the following patterns:
 

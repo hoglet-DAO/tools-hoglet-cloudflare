@@ -45,8 +45,29 @@ export default function TaskWizard() {
 
   const { callView } = useView();
   const [manualAddress, setManualAddress] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("hoglet-recent-searches");
+    if (stored) {
+      try {
+        setRecentSearches(JSON.parse(stored));
+      } catch (e) {}
+    }
+  }, []);
 
   const targetAddress = manualAddress || address;
+
+  const handleScan = (addrToScan: string) => {
+    if (addrToScan) {
+      scanModules(addrToScan, rpcUrl);
+      setRecentSearches(prev => {
+        const newRecent = [addrToScan, ...prev.filter(q => q !== addrToScan)].slice(0, 5);
+        localStorage.setItem("hoglet-recent-searches", JSON.stringify(newRecent));
+        return newRecent;
+      });
+    }
+  };
 
   const handleExecuteFunction = async (func: any, functionParams: { [key: string]: string }, typeParams: { [key: string]: string }) => {
     if (!selectedModule || !targetAddress) return { success: false, error: "Module or Address not selected." };
@@ -129,15 +150,13 @@ export default function TaskWizard() {
         manualAddress={manualAddress}
         setManualAddress={setManualAddress}
         onScan={(addr?: string) => {
-          // Si el usuario da click en una pastilla, pasamos la address directo. Sino, usamos lo escrito, o la conectada.
           const addressToScan = (typeof addr === 'string' ? addr : manualAddress) || address;
-          if (addressToScan) {
-            scanModules(addressToScan, rpcUrl);
-          }
+          handleScan(addressToScan);
         }}
         onConnect={() => connect('starkey')}
         onDisconnect={disconnect}
         glassStyle={glassStyle}
+        recentSearches={recentSearches}
       />
 
       {/* Loading Skeleton */}
