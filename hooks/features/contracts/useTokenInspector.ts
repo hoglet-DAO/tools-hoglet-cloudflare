@@ -247,8 +247,8 @@ export function useTokenInspector() {
           });
         }
         
-        // If we found ALL 4 core refs strictly set to Option::none, and no active refs, this FA is 100% verified safe
-        if (renouncedMint && renouncedBurn && renouncedTransfer && renouncedFreeze && !hasMint && !hasBurn && !hasTransfer && !hasFreeze) {
+        // If we found the 3 core refs strictly set to Option::none, and no active refs at all (including freeze), this FA is 100% verified safe
+        if (renouncedMint && renouncedBurn && renouncedTransfer && !hasMint && !hasBurn && !hasTransfer && !hasFreeze) {
            // We use extractedFaAddress if available, otherwise fallback to targetAddress (assuming the FA metadata is at this object)
            const faToRenounce = extractedFaAddress || targetAddress;
            if (!detectedRenouncedFAs.includes(faToRenounce)) {
