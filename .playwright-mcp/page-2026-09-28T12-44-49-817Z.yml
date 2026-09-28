@@ -1,0 +1,50 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - button [ref=e4]
+      - navigation [ref=e6]:
+        - link [ref=e7] [cursor=pointer]:
+          - /url: /en
+        - link [ref=e12] [cursor=pointer]:
+          - /url: /en/interactor
+        - link [ref=e18] [cursor=pointer]:
+          - /url: /en/inspector
+    - main [ref=e25]:
+      - generic [ref=e29]:
+        - generic [ref=e30] [cursor=pointer]:
+          - button "Hoglet Logo Hold to switch to supra-testnet Main":
+            - img "Hoglet Logo"
+            - generic: Hold to switch to supra-testnet
+            - generic: Main
+        - navigation
+        - generic [ref=e32]:
+          - combobox [ref=e33] [cursor=pointer]:
+            - generic [ref=e34]:
+              - generic [ref=e35]: 🌍
+              - text: En
+          - textbox [aria-hidden]: en
+          - group [aria-hidden]
+        - button "Connect Wallet" [ref=e36]
+        - heading "Select Wallet" [level=2] [ref=e39]
+        - paragraph [ref=e40]: Choose a wallet provider
+      - generic [ref=e49]:
+        - heading "Smart Contract Interactor" [level=3] [ref=e54]
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - textbox "0x..." [ref=e60]: "0x1"
+            - button "Scan" [active] [ref=e62]
+          - generic [ref=e65]:
+            - generic [ref=e84]:
+              - generic [ref=e85]: "Recent:"
+              - button "0x1" [ref=e88]
+            - generic [ref=e66]:
+              - generic [ref=e67]: "Popular:"
+              - button "0x1" [ref=e68]
+              - button "0x3" [ref=e69]
+              - button "0x4" [ref=e70]
+  - contentinfo [ref=e71]:
+    - text: Hoglet Tools is a non-custodial infrastructure. Provided As-Is without warranties.
+    - link "Read our Open-Source Terms" [ref=e72] [cursor=pointer]:
+      - /url: https://github.com/hoglet-DAO/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md
+    - text: .
+  - alert [ref=e83]

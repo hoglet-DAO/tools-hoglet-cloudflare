@@ -50,10 +50,13 @@ export const SupraWalletProvider = ({ children }: { children: ReactNode }) => {
   const connection = useWalletConnection();
   const { network } = useNetwork(); // Get network from context
   
-  // Determine RPC URL
+  // Determine RPC URL.
+  // IMPORTANT: always provide a hardcoded fallback. NEXT_PUBLIC_* vars are only
+  // inlined at build time, so builds without a .env would leave `rpcUrl` as
+  // undefined, silently breaking the Smart Contract Interactor scan.
   const rpcUrl = network === "supra-mainnet" 
-      ? process.env.NEXT_PUBLIC_RPC_URL_MAINNET! 
-      : process.env.NEXT_PUBLIC_RPC_URL_TESTNET!;
+      ? (process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://rpc-mainnet.supra.com")
+      : (process.env.NEXT_PUBLIC_RPC_URL_TESTNET || "https://rpc-testnet.supra.com");
 
   // Derived state for auth/tx hooks
   const currentAccount = connection.accounts[0] || '';
