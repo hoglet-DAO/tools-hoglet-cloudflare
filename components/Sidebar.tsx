@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Code2, Search, Menu, X, Coins } from "lucide-react";
+import { Home, Code2, Search, Menu, X, Coins, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -13,6 +13,7 @@ export default function Sidebar() {
     { id: "home", href: "/", icon: Home, label: "Dashboard", color: "text-white" },
     { id: "interactor", href: "/interactor", icon: Code2, label: "Interactor", color: "text-amm-pink" },
     { id: "inspector", href: "/inspector", icon: Coins, label: "Asset Inspector", color: "text-cyan-400" },
+    { id: "governance", href: "/governance", icon: ShieldCheck, label: "Governance", color: "text-emerald-400" },
   ];
 
   return (

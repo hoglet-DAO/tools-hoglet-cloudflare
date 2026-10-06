@@ -3,6 +3,52 @@ import { toast } from 'sonner';
 import nacl from 'tweetnacl';
 import { WalletType } from '@/utils/types';
 import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
+import { trace, traceWarn } from "@/lib/debug";
+
+/** An Ed25519 signature is 64 bytes and a public key 32, both as `0x`-prefixed hex. */
+const ED25519_SIG_HEX_CHARS = 128;
+const ED25519_PUBKEY_HEX_CHARS = 64;
+
+const hexChars = (value: unknown): number =>
+  typeof value === 'string' ? value.replace(/^0x/, '').length : -1;
+
+/**
+ * Rejects a wallet response that is missing or malformed before it can be attached to a transaction.
+ *
+ * The failure this guards against is silent and expensive: an empty signature makes the transaction
+ * well-formed but useless, so the framework rejects it on-chain with an opaque proof error. Catching
+ * it here turns that into a precise message naming the wallet.
+ */
+function validateSignature(response: any, walletType: string) {
+  const signature = response?.signature;
+  const publicKey = response?.publicKey;
+
+  if (!signature || !publicKey) {
+    const keys = response && typeof response === 'object' ? Object.keys(response).join(', ') : typeof response;
+    console.error(`[signRawHex] ${walletType} returned no signature/publicKey`, response);
+    throw new Error(
+      `${walletType} returned no signature (fields present: ${keys}). ` +
+        `The raw-byte signing request may have been rejected, or the wallet uses different field names.`
+    );
+  }
+
+  const sigChars = hexChars(signature);
+  const pkChars = hexChars(publicKey);
+
+  if (sigChars !== ED25519_SIG_HEX_CHARS || pkChars !== ED25519_PUBKEY_HEX_CHARS) {
+    console.error(`[signRawHex] ${walletType} returned unexpected sizes`, {
+      signatureChars: sigChars,
+      publicKeyChars: pkChars,
+      signature,
+      publicKey,
+    });
+    throw new Error(
+      `${walletType} returned a malformed signature (sig ${sigChars} hex chars, key ${pkChars}; expected ${ED25519_SIG_HEX_CHARS} and ${ED25519_PUBKEY_HEX_CHARS}).`
+    );
+  }
+
+  return { signature: signature as string, publicKey: publicKey as string };
+}
 
 export const useWalletAuth = (
   provider: any,
@@ -67,6 +113,72 @@ export const useWalletAuth = (
       console.error('Signing error:', error);
       toast.error('Failed to sign message');
       throw error;
+    } finally {
+      setIsSigning(false);
+    }
+  }, [provider, walletType, account]);
+
+  /**
+   * Signs raw bytes, handed over as a `0x` hex string, with the wallet key.
+   *
+   * Distinct from `signMessage`, which UTF-8 encodes its input because it is meant for human-readable
+   * login strings. Framework challenges are BCS payloads, so every byte has to survive untouched —
+   * that is the whole point of this separate entry.
+   */
+  const signRawHex = useCallback(async (hex: string, nonce = "0") => {
+    if (!provider || !account) throw new Error('Wallet not connected');
+    if (!WALLET_CONFIGS[walletType].capabilities.signMessage) {
+      throw new Error('Signing not supported by this wallet');
+    }
+
+    setIsSigning(true);
+    try {
+      trace('[signRawHex] requesting signature', {
+        walletType,
+        account,
+        hexChars: hex.length - 2,
+        bytes: (hex.length - 2) / 2,
+        nonce,
+      });
+
+      if (walletType === 'starkey') {
+        // `signMessage` signs hex-encoded UTF-8 bytes: it decodes the hex and treats it as text, so a
+        // BCS challenge (arbitrary binary, leading 0x00 bytes) cannot survive it and the wallet
+        // resolves { signature: null }. Starkey ships `signHexMessage` precisely for raw bytes —
+        // "sent to the wallet as-is, not re-encoded" — so use that whenever it is present.
+        if (typeof provider.signHexMessage === 'function') {
+          trace('[signRawHex] starkey: using signHexMessage (raw bytes)');
+          const response = await provider.signHexMessage({ message: hex });
+          trace('[signRawHex] starkey signHexMessage response', response);
+          if (response === null) throw new Error('Signing was cancelled in the wallet.');
+          return validateSignature(response, 'starkey');
+        }
+
+        console.warn(
+          '[signRawHex] starkey.signHexMessage is unavailable; falling back to signMessage, which may reject non-UTF-8 payloads'
+        );
+        const response = await provider.signMessage({ message: hex, nonce });
+        trace('[signRawHex] starkey signMessage response', response);
+        if (response === null) throw new Error('Signing was cancelled in the wallet.');
+        return validateSignature(response, 'starkey');
+      }
+
+      // Ribbit does not support dynamic chain switching for signing, so mirror the mock used for
+      // login and target mainnet's chain id.
+      const chainId = 8;
+      const response = await provider.signMessage({
+        message: hex,
+        nonce: nonce ? parseInt(nonce, 10) : 0,
+        chainId,
+      });
+      trace('[signRawHex] ribbit full response', response);
+      if (response.approved === false) {
+        throw new Error(response.error || 'Signing rejected');
+      }
+      return validateSignature(response, 'ribbit');
+    } catch (e) {
+      console.error('[signRawHex] FAILED', e);
+      throw e;
     } finally {
       setIsSigning(false);
     }
@@ -180,6 +292,7 @@ export const useWalletAuth = (
     login,
     logout,
     signMessage,
+    signRawHex,
     isSigning,
     authFetch,
     checkAndRevalidateToken

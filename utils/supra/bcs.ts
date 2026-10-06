@@ -1,4 +1,5 @@
 import { BCS, TxnBuilderTypes } from 'supra-l1-sdk';
+import { hexToBytes } from '@/utils/hex';
 
 // Convert a human-readable string to Uint8Array
 export const stringToUint8Array = (humanReadableStr: string) => {
@@ -219,11 +220,9 @@ export const serializeValueByType = (
             let bytes: Uint8Array;
 
             if (typeof value === 'string') {
-                // Hex string - convert to Uint8Array
-                const cleanHex = value.startsWith('0x') ? value.slice(2) : value;
-                bytes = new Uint8Array(
-                    cleanHex.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
-                );
+                // Hex string - decoded by the shared helper so the byte-alignment rule lives in one
+                // place rather than being re-implemented per call site.
+                bytes = hexToBytes(value);
             } else if (value instanceof Uint8Array) {
                 // Uint8Array - use directly
                 bytes = value;

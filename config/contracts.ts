@@ -9,3 +9,8 @@ export const CONTRACT_SWAP = "0x0dc694898dff98a1b0447e0992d0413e123ea80da1021d46
 
 // Ejemplo de token (puedes añadir más)
 export const MEME_TOKEN_ADDRESS = `${CONTRACT_FAUCET}::memecoins::SPIKE`;
+
+// Governance Factory: deploys decentralized modules and drives cryptographic renouncement.
+// Falls back to the 0x1 address (as any EOA) when the factory has not been published yet.
+export const GOVERNANCE_FACTORY =
+  process.env.NEXT_PUBLIC_GOVERNANCE_FACTORY || "0x1";

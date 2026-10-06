@@ -34,11 +34,16 @@ export const useWalletTransactions = (
       rpcUrl?.includes("mainnet");
     const chainIdStr = isMainnet ? '8' : '6';
 
-    // Serialize arguments using BCS
+    // Serialize arguments using BCS.
+    //
+    // A failure here must NOT fall through to the raw values: that produces a transaction which is
+    // well-formed at the transport level but mis-encoded at the Move level, so it aborts on-chain
+    // with an opaque error and looks like "the function doesn't work". Failing loudly with the real
+    // reason is the difference between a debuggable error and a mystery.
     let serializedParams = params;
-    try {
-      if (params.length > 0) {
-        console.log("Serializing arguments to BCS...");
+    if (params.length > 0) {
+      console.log("Serializing arguments to BCS...");
+      try {
         serializedParams = await serializeTransactionArgs(
           params,
           moduleAddress,
@@ -47,9 +52,14 @@ export const useWalletTransactions = (
           rpcUrl
         );
         console.log("Serialized payload:", serializedParams);
+      } catch (e: any) {
+        console.error("Failed to serialize arguments:", e);
+        throw new Error(
+          `Could not encode the arguments for ${moduleName}::${functionName}: ${
+            e?.message || String(e)
+          }`
+        );
       }
-    } catch (e) {
-      console.warn("Failed to serialize arguments, using raw strings. Might fail on-chain:", e);
     }
 
     // Check capabilities

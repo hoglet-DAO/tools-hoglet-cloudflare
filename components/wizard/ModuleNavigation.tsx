@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
 
 interface ModuleNavigationProps {
   modules: any[];
@@ -47,7 +48,7 @@ export function ModuleNavigation({
     if (currentPage > 1) setCurrentPage(p => p - 1);
   };
 
-  const isResourceAccount = authKey === "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const isResourceAccount = authKey === ZERO_AUTH_KEY;
   // The contract is controlled by an external admin/multisig if authKey is not zeros and authKey !== contractAddress
   const isExternalAdmin = !isResourceAccount && authKey && contractAddress && authKey.toLowerCase() !== contractAddress.toLowerCase();
 

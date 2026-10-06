@@ -25,6 +25,8 @@ interface SupraWalletContextType {
   login: () => Promise<string | undefined>;
   logout: () => Promise<void>;
   signMessage: (message: string, nonce: string) => Promise<any>;
+  /** Signs raw BCS bytes given as a `0x` hex string. Use for framework challenges, not login text. */
+  signRawHex: (hex: string, nonce?: string) => Promise<{ signature: string; publicKey: string }>;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
   isSigning: boolean;
 

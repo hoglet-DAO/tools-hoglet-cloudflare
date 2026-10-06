@@ -10,6 +10,7 @@ import { formatSupraError } from "@/utils/supra/errors";
 import { parseMoveArgument } from "@/utils/moveParser";
 import { showTransactionSuccessAlert, showErrorToast } from '@/utils/supra/alertService';
 import { useNetwork } from '@/context/NetworkContext';
+import { trace } from '@/lib/debug';
 
 // Wizard Subcomponents
 import { MeshBackground } from "./wizard/MeshBackground";
@@ -89,6 +90,16 @@ export default function TaskWizard() {
           return "0x" + val;
         }
         return val;
+      });
+
+      trace("[interactor:execute]", {
+        call: `${targetAddress}::${selectedModule.name}::${func.name}`,
+        kind: func.is_entry ? "entry" : func.is_view ? "view" : "internal",
+        visibility: func.visibility,
+        paramTypes: paramList,
+        rawInput: functionParams,
+        parsedArgs,
+        typeArgs: rawTypeArgs,
       });
 
       if (func.is_view) {

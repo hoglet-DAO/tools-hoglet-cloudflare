@@ -1,5 +1,6 @@
 import { getStoredABI, type ModuleABI } from '@/lib/abiStorage';
 import { serializeArgsFromTypes } from './bcs';
+import { trace, traceWarn } from "@/lib/debug";
 
 export const fetchModuleABI = async (
     moduleAddress: string, 
@@ -11,13 +12,16 @@ export const fetchModuleABI = async (
       return storedABI;
     }
 
-    const baseUrl =
-        rpcUrl ||
-        (process.env.NEXT_PUBLIC_SUPRA_CHAIN_ID === '8'
-            ? 'https://rpc-mainnet.supra.com'
-            : 'https://rpc-testnet.supra.com');
+    // Go through the cached proxy like every other read in the app, rather than calling the RPC
+    // directly from the browser. The proxy is what carries the CORS-safe origin and the 1h module
+    // cache, and a direct call would also be the only place a network hiccup could silently degrade
+    // argument encoding.
+    const isMainnet = rpcUrl?.includes('mainnet');
+    const proxyBase = rpcUrl
+        ? (isMainnet ? '/api/rpc-v3/mainnet' : '/api/rpc-v3/testnet')
+        : (process.env.NEXT_PUBLIC_SUPRA_CHAIN_ID === '8' ? '/api/rpc-v3/mainnet' : '/api/rpc-v3/testnet');
 
-    const url = `${baseUrl}/rpc/v3/accounts/${moduleAddress}/modules/${moduleName}`;
+    const url = `${proxyBase}/accounts/${moduleAddress}/modules/${moduleName}`;
 
     try {
         const response = await fetch(url);
@@ -59,10 +63,19 @@ export const getFunctionParamTypes = async (
 
     // Remove all `signer` and `&signer` from argument list because the Move VM injects those arguments. Clients do not
     // need to care about those args. `signer` and `&signer` are required be in the front of the argument list.
-    return functionDef.params.filter((param: string) => {
+    const paramTypes = functionDef.params.filter((param: string) => {
         const trimmed = param.trim();
         return trimmed !== 'signer' && trimmed !== '&signer';
     });
+
+    // The ABI is the contract for how args are BCS-encoded: a wrong order or a missing `&signer`
+    // filter here produces a payload that fails on-chain with an opaque error.
+    trace(`[abi] ${moduleAddress}::${moduleName}::${functionName}`, {
+        rawParams: functionDef.params,
+        typesUsed: paramTypes,
+    });
+
+    return paramTypes;
 };
 
 // Function to Fetch ABI and serialize arguments

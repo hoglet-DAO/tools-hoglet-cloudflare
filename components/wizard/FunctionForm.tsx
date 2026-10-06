@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSmartPlaceholder } from "@/utils/moveParser";
+import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
 import { VectorInput } from "./VectorInput";
 
 interface FunctionFormProps {
@@ -279,8 +280,34 @@ export function FunctionForm({
                           <span className="opacity-70 font-bold">✨ Supra FA:</span> 0xa
                         </button>
                       )}
+                      {paramType === "vector<u8>" && (
+                        /* The full 32-byte key cannot be typed by hand from memory, and the burn value
+                           is not the same as a short `0x0` (that is half a byte and is rejected). One
+                           click fills exactly what `rotate_authentication_key_call` writes to burn. */
+                        <button
+                          type="button"
+                          onClick={() => setFunctionParams({...functionParams, [idx]: ZERO_AUTH_KEY})}
+                          className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 transition-all text-[10px] flex items-center gap-1 cursor-pointer font-normal whitespace-nowrap shadow-[0_0_10px_rgba(244,63,94,0.1)]"
+                          title="Auto-fill the 32-byte ZERO_AUTH_KEY — the value that burns a key"
+                        >
+                          <span className="opacity-70 font-bold">✨ ZERO_AUTH_KEY:</span> burn the key
+                        </button>
+                      )}
                     </label>
-                    {paramType.startsWith("vector<") ? (
+                    {paramType === "vector<u8>" ? (
+                      /* A byte blob is entered as a single hex string. The multi-item vector input
+                         cannot express it, and its per-item parsing turns a long hex value into a
+                         float — which is how a valid 32-byte key ended up reported as
+                         "u8 value out of range in vector". */
+                      <input
+                        type="text"
+                        disabled={!selectedFunction.is_entry && !selectedFunction.is_view}
+                        className={`w-full bg-black border border-white/10 rounded-lg px-4 py-3 font-mono text-sm text-white focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${!selectedFunction.is_entry && !selectedFunction.is_view ? 'focus:border-zinc-500' : (selectedFunction.is_view ? 'focus:border-cyan-400/50 focus:shadow-[0_0_15px_rgba(6,182,212,0.2)]' : 'focus:border-amm-pink/50 focus:shadow-[0_0_15px_rgba(255,107,107,0.2)]')}`}
+                        placeholder={`0x… (hex bytes, e.g. ${ZERO_AUTH_KEY})`}
+                        value={functionParams[idx] || ""}
+                        onChange={(e) => setFunctionParams({...functionParams, [idx]: e.target.value})}
+                      />
+                    ) : paramType.startsWith("vector<") ? (
                       <VectorInput 
                         value={functionParams[idx] || ""}
                         onChange={(val) => setFunctionParams({...functionParams, [idx]: val})}

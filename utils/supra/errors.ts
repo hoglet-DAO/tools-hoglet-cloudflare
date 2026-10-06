@@ -9,6 +9,18 @@ export function formatSupraError(error: any): string {
     errStr = errStr.substring(0, backtraceIndex).trim();
   }
 
+  // The most informative shape Supra returns for a rejected call. Keep the module, the symbolic
+  // name and the numeric code: together they name both the failing module and the exact assert.
+  //   Move abort in 0x1::account: EINVALID_PROOF_OF_KNOWLEDGE(0x10005)
+  const moveAbort = errStr.match(
+    /Move abort in (0x[0-9a-fA-F]+)::([A-Za-z0-9_]+):\s*([A-Za-z0-9_]*)\((0x[0-9a-fA-F]+|[0-9]+)\)/
+  );
+  if (moveAbort) {
+    const [, addr, module, name, code] = moveAbort;
+    const label = name ? `${name} ` : "";
+    return `Move abort in ${addr}::${module}: ${label}(code ${code})`;
+  }
+
   // Extract VMError specifics
   const vmMatch = errStr.match(/VMError\s*\{\s*major_status:\s*([^,]+)(?:[\s\S]*?message:\s*Some\("([^"]+)"\))?/);
   if (vmMatch) {
