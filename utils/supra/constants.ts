@@ -5,7 +5,7 @@ export const WALLET_EVENTS = {
   ERROR: 'wallet-error',
 } as const;
 
-export const STORAGE_KEY = 'multiwallet.selectedWallet';
+/** Moved to `lib/storage`, which is the single registry of everything this app persists. */
 
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 

@@ -1,5 +1,15 @@
 import { WalletType } from '@/utils/types';
-import { STORAGE_KEY } from './constants';
+import { STORAGE_KEYS } from '@/lib/storage';
+
+/**
+ * The selected wallet, with a fallback chain.
+ *
+ * Unlike the app's own preferences this one has to survive storage being unavailable, because the Supra
+ * SDK reads it to decide which provider to restore. Hence three tiers — localStorage, sessionStorage, then
+ * a cookie — rather than the single `writeStored` the registry offers. The key still comes from the
+ * registry so it cannot drift from the rest.
+ */
+const STORAGE_KEY = STORAGE_KEYS.selectedWallet;
 
 const getCookie = (name: string) => {
   if (typeof document === 'undefined') return null;

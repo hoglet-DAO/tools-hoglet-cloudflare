@@ -52,3 +52,17 @@ export function bytesToHex(bytes: Uint8Array | number[]): string {
   }
   return `0x${out}`;
 }
+
+/**
+ * Encodes a deployment label as the `vector<u8>` the vault expects.
+ *
+ * The label is the package name, and the contract appends it to its seed verbatim — no hashing, no length
+ * prefix — so the bytes that travel are the raw UTF-8 ones.
+ *
+ * Shared by the address prediction and the deploy call on purpose. The two MUST agree: the address the user
+ * compiled against is the one the deploy lands on, and a mismatch here would show up only as a rejected
+ * transaction after the whole package had been built.
+ */
+export function labelToHex(label: string): string {
+  return bytesToHex(new TextEncoder().encode(label));
+}

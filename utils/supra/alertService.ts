@@ -161,9 +161,29 @@ const createExplorerLink = (txHash: string, network: string, text: string = "Vie
     return `<a href="${explorerUrl}" target="_blank" rel="noopener noreferrer" style="color: #06b6d4; font-weight: bold; text-decoration: underline;">${text}</a>`;
 };
 
-export const showTransactionSuccessAlert = (txHash: string, network: string, title = "Transaction Successful!") => {
-    const htmlContent = `Your transaction was completed successfully.<br/><br/>${createExplorerLink(txHash, network)}`;
-    return showSuccessAlert(title, htmlContent);
+export const showTransactionSuccessAlert = (
+    txHash: string,
+    network: string,
+    title = "Transaction Successful!",
+    contractAddress?: string
+) => {
+    const parts = ["Your transaction was completed successfully."];
+
+    // The contract is what the user came to create or change, so it is shown first and in full: the tx
+    // hash proves it happened, but the address is the thing they will copy or open again.
+    if (contractAddress) {
+        const contractUrl = getExplorerUrl(network, "address", contractAddress);
+        const link = contractUrl
+            ? ` <a href="${contractUrl}" target="_blank" rel="noopener noreferrer" style="color: #06b6d4; font-weight: bold; text-decoration: underline;">View on Suprascan</a>`
+            : "";
+        parts.push(
+            `<span style="font-size: 11px; opacity: .65; text-transform: uppercase; letter-spacing: .06em;">Contract</span>` +
+                `<br/><code style="font-size: 12px; word-break: break-all;">${contractAddress}</code>${link}`
+        );
+    }
+
+    parts.push(createExplorerLink(txHash, network, "View transaction"));
+    return showSuccessAlert(title, parts.join("<br/><br/>"));
 };
 
 // Removed DAO-specific alerts

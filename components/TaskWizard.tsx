@@ -2,10 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { motion } from "framer-motion";
 import useView from "@/hooks/features/view/useView";
 import { useContractModules } from "@/hooks/features/contracts/useContractModules";
+import { readJson, writeJson, STORAGE_KEYS } from "@/lib/storage";
 import { formatSupraError } from "@/utils/supra/errors";
 import { parseMoveArgument } from "@/utils/moveParser";
 import { showTransactionSuccessAlert, showErrorToast } from '@/utils/supra/alertService';
@@ -23,6 +25,7 @@ export default function TaskWizard() {
   const t = useTranslations("Dashboard");
   const { network } = useNetwork();
   const { accounts, connect, disconnect, rpcUrl, sendRawTransaction } = useSupraWallet();
+  const searchParams = useSearchParams();
   const address = accounts[0] || "";
   const isConnected = !!address;
 
@@ -49,12 +52,9 @@ export default function TaskWizard() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("hoglet-recent-searches");
-    if (stored) {
-      try {
-        setRecentSearches(JSON.parse(stored));
-      } catch (e) {}
-    }
+    // The interactor's own list. It holds contract addresses, while the inspector's holds tokens; one
+    // shared key meant each showed the other's entries.
+    setRecentSearches(readJson<string[]>(STORAGE_KEYS.interactorRecent, []));
   }, []);
 
   const targetAddress = manualAddress || address;
@@ -63,12 +63,31 @@ export default function TaskWizard() {
     if (addrToScan) {
       scanModules(addrToScan, rpcUrl);
       setRecentSearches(prev => {
-        const newRecent = [addrToScan, ...prev.filter(q => q !== addrToScan)].slice(0, 5);
-        localStorage.setItem("hoglet-recent-searches", JSON.stringify(newRecent));
+      const newRecent = [addrToScan, ...prev.filter(q => q !== addrToScan)].slice(0, 5);
+      writeJson(STORAGE_KEYS.interactorRecent, newRecent);
         return newRecent;
       });
     }
   };
+
+  /**
+   * Opens straight onto an address when one is given in the URL.
+   *
+   * The workspace links here with the address it is about to deploy to, and a link that only landed on an
+   * empty search box would make the reader paste back what the app already knew. Mirrors what the inspector
+   * does with the same parameter.
+   *
+   * Mount-only on purpose: depending on `searchParams` would rescan and rewrite the recent list on every
+   * render that touched it.
+   */
+  const queryAddress = searchParams.get("address");
+  useEffect(() => {
+    if (queryAddress) {
+      setManualAddress(queryAddress);
+      handleScan(queryAddress);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryAddress]);
 
   const handleExecuteFunction = async (func: any, functionParams: { [key: string]: string }, typeParams: { [key: string]: string }) => {
     if (!selectedModule || !targetAddress) return { success: false, error: "Module or Address not selected." };

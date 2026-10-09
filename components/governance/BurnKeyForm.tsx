@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { KeyRound, AlertTriangle, Loader2, Check, Info, RefreshCw, Flame, Wallet } from "lucide-react";
+import { KeyRound, AlertTriangle, Loader2, Check, Info, RefreshCw, Flame } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,24 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGovernanceActions } from "@/hooks/features/governance/useGovernanceActions";
-import { useSupraWallet } from "@/context/SupraWalletContext";
-import { DEBUG_TRACE } from "@/lib/debug";
 import { sameAddress } from "@/lib/governance/offerChallenge";
-
-/** `0x1234…abcd` — enough to tell two addresses apart in a label. */
-function shortAddress(address: string): string {
-  if (!address || address.length <= 12) return address;
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
 
 /**
  * The only lifecycle step the factory cannot perform on the owner's behalf.
  *
  * `account::rotate_authentication_key_call` is declared `entry` (not `public`) in the framework, so
- * Move forbids calling it from any other module — including governance_factory. The key owner has to
- * send this transaction directly, which is exactly why it lives in the UI instead of inside a factory
- * entry. Everything else in the lifecycle (deploy, offer, revoke) is orchestrated by the contract
- * because those framework functions are `public`.
+ * Move forbids calling it from any other module — including dao_contracts_vault. The key owner has to
+ * send this transaction directly, which is exactly why it lives in the UI instead of inside the vault.
+ * Everything else in the lifecycle (deploy, offer, revoke) is orchestrated by the contract because
+ * those framework functions are `public`.
  *
  * Because the effect is total and permanent — the address becomes unable to sign anything, forever —
  * the deliberate act is separated from the explanation: the panel informs and takes two explicit
@@ -46,18 +38,23 @@ export function BurnKeyForm({
   subject,
   wallet,
   onSigned,
-  onAuditWallet,
+  offerRedirected = false,
+  offerTarget = "",
+  expectedProxy = "",
 }: {
   /** The audited address. The burn is only offered when it is the connected wallet. */
   subject: string;
   wallet: string;
   onSigned: () => void;
-  /** Re-targets the audit at the connected wallet, which is what makes the burn actionable. */
-  onAuditWallet: () => void;
+  /** The delegation points somewhere other than the factory's own proxy. */
+  offerRedirected?: boolean;
+  /** Where the delegation currently points, shown so the redirect is actionable. */
+  offerTarget?: string;
+  /** The proxy this factory expects, shown next to the real recipient. */
+  expectedProxy?: string;
 }) {
   const t = useTranslations("Governance");
   const { burnPrivateKey, isPending } = useGovernanceActions();
-  const { connect } = useSupraWallet();
 
   const [swept, setSwept] = useState(false);
   const [understood, setUnderstood] = useState(false);
@@ -68,17 +65,58 @@ export function BurnKeyForm({
 
   const isOwner = sameAddress(wallet, subject);
   /**
-   * In development the panel still renders when the audited address is not the connected wallet, so
-   * the flow can be inspected without owning the key. `armed` stays false because it requires
-   * `isOwner`, so the burn can never be submitted from the preview.
+   * Refuse the burn outright when the delegation has been redirected.
+   *
+   * This is the one irreversible action on the whole surface, and the redirect case is exactly where
+   * it does the most damage: `cancel_eoa_delegation` requires a live authentication key
+   * (`E_DELEGATION_COMMITTED`), so once the key is zeroed the current holder of the offer owns the
+   * account permanently and nobody — not the owner, not the DAO, not this factory — can revoke it.
+   * Blocking here is the whole point of detecting the redirect at all; a warning the user can click
+   * past would be worthless against an action with no undo.
    */
-  const preview = !isOwner && DEBUG_TRACE;
+  if (offerRedirected) {
+    return (
+      <div className="rounded-xl border border-rose-400/40 bg-rose-500/[0.08] p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-rose-200">{t("burnBlockedTitle")}</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-rose-100/85">{t("burnBlockedBody")}</p>
+            <dl className="mt-3 space-y-1.5">
+              <div className="flex items-baseline gap-3">
+                <dt className="w-32 shrink-0 text-[10px] uppercase tracking-wider text-rose-200/60">
+                  {t("burnExpectedProxy")}
+                </dt>
+                <dd className="min-w-0 break-all font-mono text-[10px] text-rose-100/80">{expectedProxy || "-"}</dd>
+              </div>
+              <div className="flex items-baseline gap-3">
+                <dt className="w-32 shrink-0 text-[10px] uppercase tracking-wider text-rose-200/60">
+                  {t("burnActualOffer")}
+                </dt>
+                <dd className="min-w-0 break-all font-mono text-[10px] font-bold text-rose-300">
+                  {offerTarget || "-"}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-[11px] leading-relaxed text-rose-100/70">{t("burnBlockedHint")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  /**
+   * `rotate_authentication_key_call` is `entry`, not `public`, so Move forbids the factory from
+   * calling it: the burn is only ever signed by the address that owns the key. That makes "not my
+   * key" a dead end rather than a different screen, so there is no preview mode here — a previous
+   * one only re-targeted the audit at the connected wallet, which the command bar above already
+   * does with the same effect.
+   */
   const acknowledges = swept && understood;
   const typedMatches = wallet !== "" && sameAddress(typed.trim(), wallet);
   const busy = isPending("rotate_authentication_key_call");
 
-  // Not your key and not previewing: nothing to do here, but still worth telling the reader why.
-  if (!isOwner && !preview) {
+  // Not your key: say so plainly instead of offering an action that cannot work for you.
+  if (!isOwner) {
     return (
       <div className="rounded-xl border border-white/10 bg-black/20 p-4">
         <p className="text-sm font-bold text-white">{t("burnTitle")}</p>
@@ -163,19 +201,9 @@ export function BurnKeyForm({
               {FRAMEWORK_ACCOUNT}::account::{BURN_FUNCTION}(ZERO_AUTH_KEY)
             </code>
           </div>
-          {preview && (
-            <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
-              {t("burnPreviewBadge")}
-            </span>
-          )}
-        </div>
+          </div>
 
         <div className="border-t border-rose-400/20 px-4 py-3.5">
-          {preview && (
-            <p className="mb-3 rounded-lg border border-amber-400/25 bg-amber-500/[0.08] px-3 py-2.5 text-[11px] leading-relaxed text-amber-100/85">
-              {t("burnPreviewNote")}
-            </p>
-          )}
           <div className="flex gap-2.5 rounded-lg border border-cyan-300/20 bg-cyan-400/[0.06] px-3 py-2.5">
             <Info className="w-3.5 h-3.5 text-cyan-300 shrink-0 mt-0.5" />
             <p className="text-[11px] leading-relaxed text-cyan-100/85">{t("burnFrameworkOnly")}</p>
@@ -187,46 +215,22 @@ export function BurnKeyForm({
           <Gate checked={swept} onChange={setSwept} label={t("burnGateSwept")} />
           <Gate checked={understood} onChange={setUnderstood} label={t("burnGateUnderstood")} />
 
-          {preview ? (
-            /* A disabled button that silently swallows clicks reads as broken. In preview the CTA
-               becomes the action that actually unblocks the flow: auditing the wallet that owns the
-               key, so the burn can be signed by it. */
-            <>
-              <button
-                type="button"
-                onClick={wallet ? onAuditWallet : () => connect("starkey")}
-                title={wallet ? t("burnAuditWalletHint") : t("burnConnectHint")}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/15 px-5 py-3 text-sm font-bold text-amber-100 transition-colors hover:bg-amber-500/25 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-auto"
-              >
-                <Wallet className="w-4 h-4" />
-                {wallet
-                  ? t("burnAuditWallet", { address: shortAddress(wallet) })
-                  : t("burnConnectToEnable", { address: shortAddress(subject) })}
-              </button>
-              <p className="text-[10px] leading-relaxed text-amber-200/70">
-                {wallet ? t("burnAuditWalletHint") : t("burnConnectHint")}
-              </p>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={!acknowledges || busy}
-                onClick={() => {
-                  setTyped("");
-                  setError(null);
-                  setOpen(true);
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-rose-500 to-red-700 px-5 py-3 text-sm font-bold text-white transition-all hover:from-rose-400 hover:to-red-600 hover:shadow-[0_0_30px_-6px_rgba(244,63,94,0.7)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:shadow-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-auto"
-              >
-                <KeyRound className="w-4 h-4" />
-                {t("burnCta")}
-              </button>
-              {/* Say why it is disabled instead of letting the click vanish. */}
-              {!acknowledges && (
-                <p className="text-[10px] leading-relaxed text-gray-500">{t("burnGatesHint")}</p>
-              )}
-            </>
+          <button
+            type="button"
+            disabled={!acknowledges || busy}
+            onClick={() => {
+              setTyped("");
+              setError(null);
+              setOpen(true);
+            }}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-rose-500 to-red-700 px-5 py-3 text-sm font-bold text-white transition-all hover:from-rose-400 hover:to-red-600 hover:shadow-[0_0_30px_-6px_rgba(244,63,94,0.7)] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:shadow-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-auto"
+          >
+            <KeyRound className="w-4 h-4" />
+            {t("burnCta")}
+          </button>
+          {/* Say why it is disabled instead of letting the click vanish. */}
+          {!acknowledges && (
+            <p className="text-[10px] leading-relaxed text-gray-500">{t("burnGatesHint")}</p>
           )}
         </div>
       </motion.div>

@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // Importamos todo de aquí
 import { trace } from '@/lib/debug';
+import { readStored, writeStored, STORAGE_KEYS } from '@/lib/storage';
 
 // Define tipos de red más específicos
 export type NetworkType =
@@ -35,27 +36,15 @@ export const VALID_NETWORKS: NetworkType[] = [
  * drag the user back to mainnet. The parameter still wins when present, which keeps shared links
  * working; otherwise this is the fallback.
  */
-const NETWORK_STORAGE_KEY = 'hoglet-network';
-
 function readStoredNetwork(): NetworkType | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = window.localStorage.getItem(NETWORK_STORAGE_KEY);
-    return stored && VALID_NETWORKS.includes(stored as NetworkType)
-      ? (stored as NetworkType)
-      : null;
-  } catch {
-    return null;
-  }
+  const stored = readStored(STORAGE_KEYS.network);
+  return stored && VALID_NETWORKS.includes(stored as NetworkType) ? (stored as NetworkType) : null;
 }
 
 function storeNetwork(network: NetworkType): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(NETWORK_STORAGE_KEY, network);
-  } catch {
-    /* private mode / storage disabled: the query parameter still works */
-  }
+  // Failure is ignored on purpose: the query parameter still carries the choice, so a browser that
+  // refuses storage loses the memory of the preference but not the preference itself.
+  writeStored(STORAGE_KEYS.network, network);
 }
 
 interface NetworkContextType {

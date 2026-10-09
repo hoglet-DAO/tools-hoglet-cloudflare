@@ -16,19 +16,18 @@ import {
   normalizeAddressHex,
   ED25519_SCHEME,
 } from "@/lib/governance/offerChallenge";
-import { GOVERNANCE_FACTORY } from "@/config/contracts";
+import { DAO_CONTRACTS_VAULT, VAULT_MODULE } from "@/config/contracts";
 import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
 import { trace, traceWarn } from "@/lib/debug";
 
 /** The eight lifecycle entry points, with the module each one lives in. */
 export const GOVERNANCE_ENTRIES = {
-  deploy_autonomous_contract: { module: "governance", address: GOVERNANCE_FACTORY },
-  donate_eoa_to_dao: { module: "governance", address: GOVERNANCE_FACTORY },
-  cancel_eoa_delegation: { module: "governance", address: GOVERNANCE_FACTORY },
-  upgrade_contract: { module: "governance", address: GOVERNANCE_FACTORY },
-  renounce_resource_account: { module: "governance", address: GOVERNANCE_FACTORY },
-  renounce_contract: { module: "governance", address: GOVERNANCE_FACTORY },
-  transfer_admin: { module: "governance", address: GOVERNANCE_FACTORY },
+  deploy_autonomous_contract: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
+  donate_eoa_to_dao: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
+  cancel_eoa_delegation: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
+  upgrade_contract: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
+  renounce_contract: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
+  transfer_admin: { module: VAULT_MODULE, address: DAO_CONTRACTS_VAULT },
   rotate_authentication_key_call: { module: "account", address: "0x1" },
 } as const;
 
@@ -39,6 +38,11 @@ export interface ExecuteOptions {
   args?: any[];
   /** Generic type arguments. */
   typeArgs?: any[];
+  /**
+   * The address the action produced or acted on, surfaced in the success alert beside the transaction link.
+   * A deploy creates it, an upgrade acts on it — either way it is the thing the user wants to keep.
+   */
+  successAddress?: string;
   /**
    * Feedback ownership. Success and failure are separate on purpose: a caller that renders an inline
    * receipt still wants the explorer link, and a caller that renders an inline error must not also
@@ -111,7 +115,7 @@ export function useGovernanceActions() {
         }
 
         if (!options.silentSuccess) {
-          showTransactionSuccessAlert(txHash, network);
+          showTransactionSuccessAlert(txHash, network, undefined, options.successAddress);
         }
         return txHash;
       } catch (error: any) {
@@ -168,11 +172,11 @@ export function useGovernanceActions() {
     async (source: string): Promise<SignedOfferProof> => {
       if (!source) throw new Error("Connect the EOA you want to donate");
 
-      trace("[governance:proof] start", { source, factory: GOVERNANCE_FACTORY, rpcUrl });
+      trace("[governance:proof] start", { source, vault: DAO_CONTRACTS_VAULT, rpcUrl });
 
       // The contract recomputes this recipient itself; the proof must commit to the same value.
       // `normalizeAddressHex` pads to 64 hex chars, because the fullnode trims leading zeros.
-      const proxyRes = await callViewRaw(rpcUrl, GOVERNANCE_FACTORY, "governance", "predict_eoa_proxy_address", [], [source]);
+      const proxyRes = await callViewRaw(rpcUrl, DAO_CONTRACTS_VAULT, VAULT_MODULE, "predict_eoa_proxy_address", [], [source]);
       trace("[governance:proof] predict_eoa_proxy_address raw ->", proxyRes);
 
       const recipient = normalizeAddressHex(firstViewResult(proxyRes));

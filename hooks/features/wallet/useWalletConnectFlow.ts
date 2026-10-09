@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupraWallet } from '@/context/SupraWalletContext';
 import { WalletType, UserProfile } from '@/utils/types';
-import { RECENT_WALLET_KEY, WALLET_INFO, TIMINGS } from '@/components/wallet/wallet-constants';
+import { WALLET_INFO, TIMINGS } from '@/components/wallet/wallet-constants';
+import { readStored, writeStored, STORAGE_KEYS } from '@/lib/storage';
 
 // --- Types ---
 type ConnectionStage = 'idle' | 'connecting' | 'signing' | 'success' | 'error' | 'connected-not-signed';
@@ -22,7 +23,7 @@ export const useWalletConnectFlow = ({ onConnect, onDisconnect, onClose }: UseWa
 
     // Init recent wallet
     useEffect(() => {
-        const recent = localStorage.getItem(RECENT_WALLET_KEY) as WalletType;
+        const recent = readStored(STORAGE_KEYS.recentWallet) as WalletType | null;
         if (recent && WALLET_INFO[recent]) setRecentWallet(recent);
     }, []);
 
@@ -39,7 +40,7 @@ export const useWalletConnectFlow = ({ onConnect, onDisconnect, onClose }: UseWa
             try {
                 await wallet.login();
                 setStage('success');
-                localStorage.setItem(RECENT_WALLET_KEY, walletType);
+                writeStored(STORAGE_KEYS.recentWallet, walletType);
                 setRecentWallet(walletType);
                 
                 if (wallet.accounts[0]) {

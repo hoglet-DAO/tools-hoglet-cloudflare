@@ -4,6 +4,7 @@ import { WalletType } from '@/utils/types';
 import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
 import { getStoredWalletType, setStoredWalletType, clearStoredWalletType } from '@/utils/supra/storage';
 import { useNetwork } from '@/context/NetworkContext';
+import { writeStored, STORAGE_KEYS } from '@/lib/storage';
 import type { DappMetadata, WalletInfo, WalletBalanceRequest } from 'ribbit-wallet-connect';
 
 export const useWalletConnection = () => {
@@ -140,8 +141,9 @@ export const useWalletConnection = () => {
         const responseAcc = await currentProvider.account();
         if (responseAcc.length > 0) {
           connectedAccount = responseAcc[0];
-          // Starkey specific local storage
-          localStorage.setItem('starkey.accounts.0', connectedAccount);
+          // Pre-seeds the provider's own key so it can restore the account on its next init. See the
+          // comment on STORAGE_KEYS.starkeyAccount: it is not our namespace.
+          writeStored(STORAGE_KEYS.starkeyAccount, connectedAccount);
         }
       } else if (targetWallet === 'ribbit') {
         const dappMetadata: DappMetadata = {

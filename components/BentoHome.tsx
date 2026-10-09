@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Code2, Search, Zap, Blocks, Coins, ShieldCheck } from "lucide-react";
+import { ArrowRight, Code2, Search, Zap, Blocks, Coins, ShieldCheck, KeyRound, TriangleAlert } from "lucide-react";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { useRouter } from "@/i18n/navigation";
 
@@ -83,37 +83,68 @@ export default function BentoHome() {
           </div>
         </motion.div>
 
-        {/* Governance Card */}
+        {/* Contract Governance Card — the factory owns these modules, a DAO admin decides. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
           onClick={() => router.push("/governance")}
-          className="md:col-span-2 group relative rounded-3xl bg-zinc-900/40 border border-white/10 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all duration-500 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col md:flex-row md:items-center gap-6 sm:gap-8 p-6 sm:p-8"
+          className="group relative rounded-3xl bg-zinc-900/40 border border-white/10 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all duration-500 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col justify-between"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-          <div className="relative z-10 flex items-start gap-4 sm:gap-6 flex-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <div className="p-6 sm:p-8 relative z-10">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-emerald-500/20">
               <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="text-left">
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 sm:mb-3">Governance &amp; Decentralization</h2>
-              <p className="text-sm sm:text-base text-gray-400 font-medium">
-                Deploy keyless modules, donate an EOA to a DAO, and renounce governance with cryptographic proof.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {["Key Annihilation", "DAO Migration", "Immutable Renounce"].map((tag) => (
-                  <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Contract Governance</h2>
+            <p className="text-sm sm:text-base text-gray-400 font-medium">
+              Deploy a module with no key, give it an owner, upgrade it, or seal it forever.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {["Keyless Deploy", "Upgrades", "Immutable Seal"].map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
 
-          <div className="relative z-10 shrink-0 flex md:justify-end">
+          <div className="p-6 sm:p-8 relative z-10 flex justify-end">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300 group-hover:scale-110">
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors" />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Account Control Card — the visitor owns this one, and one action here cannot be undone.
+            Given its own card instead of a row inside Contract Governance: that page's whole
+            guarantee is "a DAO can still change this later", which does not hold for an account. */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.35 }}
+          onClick={() => router.push("/account-control")}
+          className="group relative rounded-3xl bg-zinc-900/40 border border-rose-500/20 overflow-hidden cursor-pointer hover:border-rose-500/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(244,63,94,0.12)] flex flex-col justify-between"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+          <div className="p-6 sm:p-8 relative z-10">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-rose-500/20">
+              <KeyRound className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Account Control</h2>
+            <p className="text-sm sm:text-base text-gray-400 font-medium">
+              Hand your account to a DAO, take the control back, or destroy the key for good.
+            </p>
+            <p className="mt-4 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-300 border border-rose-500/25">
+              <TriangleAlert className="w-3 h-3" />
+              Some actions are permanent
+            </p>
+          </div>
+
+          <div className="p-6 sm:p-8 relative z-10 flex justify-end">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-all duration-300 group-hover:scale-110">
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors" />
             </div>
           </div>

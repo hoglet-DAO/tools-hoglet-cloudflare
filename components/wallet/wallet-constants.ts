@@ -3,7 +3,7 @@ import starkeyIcon from '@/public/walletIcons/Starkey.png';
 import ribbitIcon from '@/public/walletIcons/Ribbit.jpg';
 
 // --- Constants & Config ---
-export const RECENT_WALLET_KEY = 'recent_wallet_type';
+// The storage key lives in `lib/storage`, which is the single registry of everything this app persists.
 export const TIMINGS = {
   MIN_LOADING: 300, // Minimum time to show loading state for UX
   SUCCESS_DISPLAY: 1000, // How long to show success message

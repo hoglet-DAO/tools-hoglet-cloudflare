@@ -1,4 +1,4 @@
-module governance_factory::publisher {
+module dao_contracts_vault::publisher {
     use std::signer;
     use std::vector;
     use std::error;
@@ -15,7 +15,7 @@ module governance_factory::publisher {
     const E_MODULE_HAS_NO_CODE: u64 = 15;
     const E_SELF_ADMIN: u64 = 17;
 
-    /// Stores the SignerCapability of the package Resource Account (@governance_factory).
+    /// Stores the SignerCapability of the package Resource Account (@dao_contracts_vault).
     /// Kept strictly isolated in this module to protect root authority.
     struct PackageAdmin has key {
         admin: address,
@@ -55,8 +55,8 @@ module governance_factory::publisher {
         metadata_serialized: vector<u8>,
         code: vector<vector<u8>>,
     ) acquires PackageAdmin {
-        assert!(exists<PackageAdmin>(@governance_factory), error::invalid_state(E_ALREADY_RENOUNCED));
-        let admin_record = borrow_global<PackageAdmin>(@governance_factory);
+        assert!(exists<PackageAdmin>(@dao_contracts_vault), error::invalid_state(E_ALREADY_RENOUNCED));
+        let admin_record = borrow_global<PackageAdmin>(@dao_contracts_vault);
         assert!(signer::address_of(caller) == admin_record.admin, error::permission_denied(E_NOT_ADMIN));
         assert!(!vector::is_empty(&code), error::invalid_argument(E_MODULE_HAS_NO_CODE));
 
@@ -74,10 +74,10 @@ module governance_factory::publisher {
         new_admin: address,
     ) acquires PackageAdmin {
         assert!(new_admin != @0x0, error::invalid_argument(E_ZERO_ADMIN));
-        assert!(new_admin != @governance_factory, error::invalid_argument(E_SELF_ADMIN));
-        assert!(exists<PackageAdmin>(@governance_factory), error::invalid_state(E_ALREADY_RENOUNCED));
+        assert!(new_admin != @dao_contracts_vault, error::invalid_argument(E_SELF_ADMIN));
+        assert!(exists<PackageAdmin>(@dao_contracts_vault), error::invalid_state(E_ALREADY_RENOUNCED));
 
-        let admin_record = borrow_global_mut<PackageAdmin>(@governance_factory);
+        let admin_record = borrow_global_mut<PackageAdmin>(@dao_contracts_vault);
         let old_admin = admin_record.admin;
         assert!(signer::address_of(caller) == old_admin, error::permission_denied(E_NOT_ADMIN));
         assert!(new_admin != old_admin, error::invalid_argument(E_SAME_ADMIN));
@@ -96,15 +96,15 @@ module governance_factory::publisher {
     public entry fun renounce_package_admin(
         caller: &signer,
     ) acquires PackageAdmin {
-        assert!(exists<PackageAdmin>(@governance_factory), error::invalid_state(E_ALREADY_RENOUNCED));
-        let PackageAdmin { admin, cap } = move_from<PackageAdmin>(@governance_factory);
+        assert!(exists<PackageAdmin>(@dao_contracts_vault), error::invalid_state(E_ALREADY_RENOUNCED));
+        let PackageAdmin { admin, cap } = move_from<PackageAdmin>(@dao_contracts_vault);
         assert!(signer::address_of(caller) == admin, error::permission_denied(E_NOT_ADMIN));
 
         // Revoke the Resource Account self-offer to seal the address completely.
         let package_signer = account::create_signer_with_capability(&cap);
-        if (account::is_signer_capability_offered(@governance_factory)
-            && account::get_signer_capability_offer_for(@governance_factory) == @governance_factory) {
-            account::revoke_signer_capability(&package_signer, @governance_factory);
+        if (account::is_signer_capability_offered(@dao_contracts_vault)
+            && account::get_signer_capability_offer_for(@dao_contracts_vault) == @dao_contracts_vault) {
+            account::revoke_signer_capability(&package_signer, @dao_contracts_vault);
         };
 
         // `cap` falls out of scope and is destroyed (SignerCapability has `drop`).
@@ -126,8 +126,8 @@ module governance_factory::publisher {
     /// Returns the active admin of the package, or @0x0 if renounced / immutable.
     #[view]
     public fun get_package_admin(): address acquires PackageAdmin {
-        if (exists<PackageAdmin>(@governance_factory)) {
-            borrow_global<PackageAdmin>(@governance_factory).admin
+        if (exists<PackageAdmin>(@dao_contracts_vault)) {
+            borrow_global<PackageAdmin>(@dao_contracts_vault).admin
         } else {
             @0x0
         }
@@ -136,6 +136,6 @@ module governance_factory::publisher {
     /// Returns true if the package is permanently and irreversibly renounced (immutable).
     #[view]
     public fun is_package_renounced(): bool {
-        !exists<PackageAdmin>(@governance_factory)
+        !exists<PackageAdmin>(@dao_contracts_vault)
     }
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Undo2, Loader2, Check, Info } from "lucide-react";
+import { Undo2, Loader2, Check, Info, RefreshCw } from "lucide-react";
 import { useGovernanceActions } from "@/hooks/features/governance/useGovernanceActions";
 import { sameAddress } from "@/lib/governance/offerChallenge";
 
@@ -30,7 +30,7 @@ export function CancelDelegationForm({
   const t = useTranslations("Governance");
   const { cancelDelegation, isPending } = useGovernanceActions();
   const [confirming, setConfirming] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const isOwner = sameAddress(wallet, subject);
@@ -54,18 +54,26 @@ export function CancelDelegationForm({
       >
         <div className="flex items-start gap-3">
           <Check className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5" />
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-cyan-200">{t("cancelDelegationDoneTitle")}</p>
             <p className="mt-1 text-[11px] leading-relaxed text-gray-400">{t("cancelDelegationDoneHint")}</p>
+            {/* The receipt carries the hash: it is the only proof that the revoke was broadcast. */}
+            <p className="mt-2 break-all font-mono text-[10px] text-gray-500">tx {done}</p>
+            {/* Still offered because the re-audit on submit can land before the chain reflects the
+                revoke: this form only unmounts once the read reports `unmanaged`, so when you are
+                still looking at it, the state has not caught up yet and a second read can help. */}
             <button
               type="button"
               onClick={() => {
-                setDone(false);
+                // The receipt has served its purpose. The stage this form lives in
+                // (`dual_master`) is derived from the chain, so re-auditing unmounts it.
+                setDone(null);
                 setConfirming(false);
                 onDone();
               }}
-              className="mt-2 text-[11px] text-gray-500 transition-colors hover:text-gray-300 focus-visible:outline-none focus-visible:underline"
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-gray-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
             >
+              <RefreshCw className="w-3 h-3" />
               {t("burnReaudit")}
             </button>
           </div>
@@ -101,8 +109,14 @@ export function CancelDelegationForm({
                 try {
                   const txHash = await cancelDelegation(subject);
                   // No hash means the prompt was declined: the shared warning toast covers it, and
-                  // showing the success state here would claim a change that never happened.
-                  if (txHash) setDone(true);
+                  // showing the receipt here would claim a revocation that never happened.
+                  if (!txHash) return;
+                  // Receipt first, then re-audit — same order as the donation form, so undoing a
+                  // donation updates the panel the way making one does. If the chain has not caught up
+                  // yet, `dual_master` still holds and the receipt stays visible with its refresh
+                  // action; once it does, this form unmounts and the donate form takes its place.
+                  setDone(txHash);
+                  onDone();
                 } catch (e: any) {
                   setError(e?.message || t("cancelDelegationFailed"));
                 }

@@ -17,6 +17,23 @@ export function formatSupraError(error: any): string {
   );
   if (moveAbort) {
     const [, addr, module, name, code] = moveAbort;
+    // The two framework aborts that most often mean "you already did this" and read like unrelated
+    // collisions. Replaced with the action that actually resolves them, because the raw code points a
+    // caller at the wrong tool: these are expected outcomes of the one-account-per-creator derivation,
+    // not attacks on it.
+    if (name === "ERESOURCE_ACCCOUNT_EXISTS" || name === "EACCOUNT_ALREADY_USED") {
+      return (
+        "This account is already taken. Each (creator, package name) pair gets one deployment and one " +
+        "proxy, permanently — to publish again use the upgrade action instead of deploying again."
+      );
+    }
+    // The vault's own guard for the same situation, raised before the framework would be reached.
+    if (name === "E_ALREADY_INITIALIZED") {
+      return (
+        "This package name already has a contract deployed to it. Use the upgrade action to publish " +
+        "new code instead of deploying again."
+      );
+    }
     const label = name ? `${name} ` : "";
     return `Move abort in ${addr}::${module}: ${label}(code ${code})`;
   }

@@ -1,11 +1,13 @@
-module governance_factory::governance {
+module dao_contracts_vault::vault {
     use std::signer;
     use std::vector;
-    use std::option;
     use std::error;
+    use supra_framework::table::{Self, Table};
     use supra_framework::account;
     use supra_framework::code;
     use supra_framework::event;
+    use dao_contracts_vault::publisher;
+    use dao_contracts_vault::vault_fee;
 
     // =========================================================================
     // CONSTANTS & SECURITY ANCHORS
@@ -18,19 +20,23 @@ module governance_factory::governance {
     /// Deterministic seed used to derive, from an EOA, the proxy Resource Account that holds its
     /// delegated signer capability. Because the EOA address is the source, the proxy address is
     /// unique per EOA and needs no per-creator nonce.
-    const EOA_PROXY_SEED: vector<u8> = b"governance_factory::eoa_proxy_v1";
+    const EOA_PROXY_SEED: vector<u8> = b"dao_contracts_vault::eoa_proxy_v1";
 
-    /// Canonical seed used for every Autonomous Resource Account deployment.
+    /// Prefix of the seed every Autonomous Resource Account is derived from. The label is appended to it by
+    /// `autonomous_seed`.
     ///
-    /// Rationale (collision safety): the Resource Account derivation is
-    /// `sha3_256(bcs(source) || seed || 0xFF)`. A per-creator monotonic nonce (previous design) is
-    /// NOT required for uniqueness, because the source address already domains every account. Two
-    /// different creators can therefore never collide, and the same creator always deploys to the
-    /// *same* address, which safely blocks any third party from squatting or pre-creating the
-    /// account (an existing account with a non-zero sequence number or an active capability offer
-    /// makes `create_resource_account` abort). This keeps `predict_next_contract_address()` stable,
-    /// so CI pipelines can pre-compile a package for a fixed target address forever.
-    const AUTONOMOUS_SEED: vector<u8> = b"governance_factory::autonomous_v1";
+    /// Rationale (collision safety): the derivation is `sha3_256(bcs(source) || seed || label || 0xFF)`. A
+    /// per-creator monotonic nonce is NOT required for uniqueness, because the source address already
+    /// domains every account and the label separates deployments of the same creator. Two creators can
+    /// therefore never collide, and a given `(creator, label)` always lands on the *same* address, which
+    /// safely blocks any third party from squatting it: creating the account needs the creator's signer, and
+    /// an existing account with a non-zero sequence number or an active capability offer cannot be claimed
+    /// again by `create_resource_account`.
+    ///
+    /// Keeping the derivation a pure function of `(creator, label)` is what lets
+    /// `predict_next_contract_address()` answer before the account exists, so a package can be compiled
+    /// against its final address.
+    const AUTONOMOUS_SEED: vector<u8> = b"dao_contracts_vault::autonomous_v1";
 
     // Security Status Constants
     const STATUS_UNMANAGED: u8 = 0;
@@ -45,9 +51,6 @@ module governance_factory::governance {
     const E_ALREADY_INITIALIZED: u64 = 4;
     const E_EOA_KEY_NOT_BURNED: u64 = 5;
     const E_CAPABILITY_NOT_OFFERED_TO_PROXY: u64 = 6;
-    /// Renouncing requires an empty payload: a renounce with `code` would deploy code the DAO could
-    /// never remove, breaking the very immutability the caller is asking for.
-    const E_CODE_ON_RENOUNCE: u64 = 7;
     const E_ZERO_ADMIN: u64 = 11;
     /// A transfer cannot be redirected to the current admin.
     const E_SAME_ADMIN: u64 = 12;
@@ -63,6 +66,25 @@ module governance_factory::governance {
     /// A donation can only be cancelled while the EOA still holds its key. Once annihilated the
     /// delegation is final and only `renounce_contract` applies.
     const E_DELEGATION_COMMITTED: u64 = 18;
+    /// The factory catalog is missing, so a record cannot be written. Previously this degraded to
+    /// index 0, which silently aliased every such record onto slot 0 and let a later admin change or
+    /// renouncement rewrite whichever contract legitimately owned that slot.
+    const E_CATALOG_NOT_FOUND: u64 = 19;
+    /// The address the framework derived differs from the one predicted on-chain. Should be unreachable:
+    /// both come from `create_resource_address` with the same source and seed. Reuses the deploy guard's
+    /// category so clients already parsing `already_exists` do not need a new case.
+    const E_DERIVATION_MISMATCH: u64 = 20;
+    /// A deployment needs a label, and an empty one would silently reuse the unlabelled address.
+    const E_EMPTY_LABEL: u64 = 21;
+    /// Labels are bounded so the seed cannot be inflated into something costlier to hash than the
+    /// deployment it names.
+    const E_LABEL_TOO_LONG: u64 = 22;
+
+    /// Longest label accepted. Generous for a package name and far short of anything abusive.
+    const MAX_LABEL_LEN: u64 = 64;
+
+    /// Active rotation capability offer detected on an EOA, creating a key-recovery backdoor hazard.
+    const E_ROTATION_CAPABILITY_ACTIVE: u64 = 24;
 
     // =========================================================================
     // GOVERNANCE STORAGE
@@ -107,16 +129,20 @@ module governance_factory::governance {
         is_renounced: bool,
     }
 
-    /// Global public registry stored at the factory address (@governance_factory).
+    /// Global public registry stored at the factory address (@dao_contracts_vault).
     ///
-    /// The catalog is a `vector` because its length is needed for pagination and for
-    /// `predict_next_contract_index`. Every read/write of a single entry goes through
-    /// `find_index`, so cost is O(n) in the number of *registered contracts*  acceptable for the
-    /// intended registry size, and it avoids coupling to a framework Table that may diverge between
-    /// Supra and Aptos. Prefer one address per package: registering several modules of the same
-    /// package inflates `n` without adding information.
+    /// Backed by a `Table`, not a `vector`. A `vector` re-reads and rewrites its whole backing store
+    /// on every `push_back`, so registering the Nth contract costs O(N): the catalog becomes
+    /// progressively more expensive until deployments stop fitting in gas, and every entrant pays
+    /// for the entries of everyone before them. `Table::add` and `Table::borrow_mut` are O(1), so a
+    /// registration costs the same whether the registry holds ten entries or a million.
+    ///
+    /// `next_index` is kept alongside the table for two reasons: it hands out dense keys so
+    /// `get_contracts_page` can walk a contiguous range, and it means the key is derived from the
+    /// counter rather than from the length of a collection that renouncing never shrinks.
     struct FactoryCatalog has key {
-        contracts: vector<DeployedItem>,
+        contracts: Table<u64, DeployedItem>,
+        next_index: u64,
     }
 
     // =========================================================================
@@ -160,13 +186,6 @@ module governance_factory::governance {
     }
 
 
-    #[event]
-    struct ResourceAccountFrozenEvent has store, drop {
-        contract_address: address,
-        /// Empty after a cryptographic freeze: no reference to the SignerCapability survives.
-        code_hash: vector<u8>,
-        self_offer_revoked: bool,
-    }
 
     #[event]
     struct EoaDelegationCancelledEvent has store, drop {
@@ -200,12 +219,17 @@ module governance_factory::governance {
     /// burden of declaring whatever this function transitively acquires.
     fun initialize_factory(account: &signer) {
         let addr = signer::address_of(account);
-        assert!(addr == @governance_factory, error::permission_denied(E_NOT_ADMIN));
+        assert!(addr == @dao_contracts_vault, error::permission_denied(E_NOT_ADMIN));
         if (!exists<FactoryCatalog>(addr)) {
             move_to(account, FactoryCatalog {
-                contracts: vector::empty<DeployedItem>(),
+                contracts: table::new<u64, DeployedItem>(),
+                next_index: 0,
             });
         };
+        // Initialize vault_fee module configuration (default: 0 fee) with package admin as fee admin
+        let pkg_admin = publisher::get_package_admin();
+        let admin_target = if (pkg_admin != @0x0) { pkg_admin } else { @admin };
+        vault_fee::initialize(account, admin_target, admin_target, 0);
     }
 
     // =========================================================================
@@ -213,46 +237,117 @@ module governance_factory::governance {
     // =========================================================================
 
     /// Deploys a new autonomous contract into a Resource Account in 1 atomic step:
-    /// 1. Derives the deterministic Resource Account from the creator and the canonical seed.
-    /// 2. Deploys the contract bytecode to the newly derived Resource Account.
-    /// 3. Installs `ManagedContract` on the account, storing the SignerCapability and binding the DAO.
-    /// 4. Registers the new deployment in the public factory catalog.
+    /// 1. Collects the platform deployment fee in SupraCoin via `vault_fee` if configured.
+    /// 2. Derives the deterministic Resource Account from the creator and `label`.
+    /// 3. Deploys the contract bytecode to the newly derived Resource Account.
+    /// 4. Installs `ManagedContract` on the account, storing the SignerCapability and binding the DAO.
+    /// 5. Registers the new deployment in the public factory catalog.
+    ///
+    /// `label` namespaces the address so one creator can hold several deployments. A label rather than a
+    /// nonce because the address has to be known *before* the package is compiled - the manifest binds the
+    /// module's self address, so the target cannot be discovered afterwards. A label is derivable from what
+    /// the caller already has (the package name); a nonce would have to be remembered, and carries no
+    /// meaning when written down.
+    ///
+    /// Predictability is unchanged: the address remains a pure function of `(creator, label)`, so it is
+    /// still computable before the account exists, and a third party still cannot create it without the
+    /// creator's signer.
     public entry fun deploy_autonomous_contract(
         creator: &signer,
+        label: vector<u8>,
         metadata_serialized: vector<u8>,
         code: vector<vector<u8>>,
-        dao_admin: address,
+        owner: address,
     ) acquires FactoryCatalog {
         let creator_addr = signer::address_of(creator);
-        assert!(dao_admin != @0x0, error::invalid_argument(E_ZERO_ADMIN));
-        assert!(dao_admin != creator_addr, error::invalid_argument(E_SELF_ADMIN));
 
-        let (resource_signer, cap) = account::create_resource_account(creator, AUTONOMOUS_SEED);
+        // Collect platform deployment fee via dedicated vault_fee module
+        vault_fee::collect_deploy_fee(creator);
+        // No `owner != @0x0` guard: zero is the explicit "no owner" case, which publishes the package and
+        // freezes it in the same transaction (see the branch below). Any real owner keeps the account
+        // governable exactly as before.
+        //ONLY IN TESTNET IS COMMENTED
+        //assert!(owner != creator_addr, error::invalid_argument(E_SELF_ADMIN));
+        assert!(!vector::is_empty(&label), error::invalid_argument(E_EMPTY_LABEL));
+        // Bounded so the seed cannot be inflated into something that costs more gas to hash than the
+        // deployment it names.
+        assert!(vector::length(&label) <= MAX_LABEL_LEN, error::invalid_argument(E_LABEL_TOO_LONG));
+
+        let seed = autonomous_seed(&label);
+
+        // Still deterministic, just keyed on the label as well as the creator: the same `(creator, label)`
+        // always lands on the same account, and reusing a label is caught here rather than surfacing from
+        // inside the framework as ERESOURCE_ACCCOUNT_EXISTS, which says nothing about what to do next.
+        let predicted = account::create_resource_address(&creator_addr, seed);
+        // Resilient to dust-griefing: allows accounts that exist only because they were pre-funded (seq == 0, no signer offer).
+        // Aborts if the account is already factory-managed or has executed transactions.
+        if (account::exists_at(predicted)) {
+            assert!(
+                !is_factory_managed(predicted)
+                    && account::get_sequence_number(predicted) == 0
+                    && !account::is_signer_capability_offered(predicted),
+                error::already_exists(E_ALREADY_INITIALIZED),
+            );
+        };
+
+        // The module must not administer itself. This is the one admin value that cannot be recovered
+        // from: `assert_authorized` demands a signer for the caller, and the only signer that ever
+        // exists for this Resource Account is the factory's own SignerCapability. So `owner == self`
+        // makes upgrade_contract, transfer_admin and renounce_contract permanently unreachable - there is
+        // no wallet that can be this address, and nothing else can speak for it.
+        //
+        // `transfer_admin` already refuses `new_admin == contract_addr`, so deploy was the odd one out.
+        // Worth guarding explicitly because the module's address is shown to the user as "where the
+        // module will live", which makes it an easy value to paste into the admin field by mistake.
+        assert!(owner != predicted, error::invalid_argument(E_SELF_ADMIN));
+        assert!(owner != @dao_contracts_vault, error::invalid_argument(E_SELF_ADMIN));
+
+        let (resource_signer, cap) = account::create_resource_account(creator, seed);
         let resource_addr = signer::address_of(&resource_signer);
+        // Defensive: derivation is deterministic, so these are the same value. Checked anyway because the
+        // framework derives it internally and a divergence would silently record the wrong address.
+        assert!(resource_addr == predicted, error::invalid_state(E_DERIVATION_MISMATCH));
 
         if (!vector::is_empty(&code)) {
             code::publish_package_txn(&resource_signer, metadata_serialized, code);
         };
 
-        let idx = record_in_catalog(resource_addr, creator_addr, dao_admin, true, false);
-
-        move_to(
-            &resource_signer,
-            ManagedContract {
-                creator: creator_addr,
-                admin: dao_admin,
-                cap,
-                is_eoa: false,
-                catalog_index: idx,
-            },
-        );
+        if (owner == @0x0) {
+            // Immutable from genesis. No owner and no capability is kept: the self-offer is revoked and `cap`
+            // is left to fall out of scope, so no signer can ever act for the address again. The tombstone
+            // records it as renounced and the catalog entry is marked the same way, so the audit reports the
+            // frozen state even though no `ManagedContract` was ever stored.
+            account::revoke_signer_capability(&resource_signer, resource_addr);
+            write_tombstone(&resource_signer, creator_addr, false, true);
+            record_in_catalog(resource_addr, creator_addr, @0x0, true, true);
+        } else {
+            let idx = record_in_catalog(resource_addr, creator_addr, owner, true, false);
+            move_to(
+                &resource_signer,
+                ManagedContract {
+                    creator: creator_addr,
+                    admin: owner,
+                    cap,
+                    is_eoa: false,
+                    catalog_index: idx,
+                },
+            );
+        };
 
         event::emit(ContractDeployedEvent {
             contract_address: resource_addr,
             creator: creator_addr,
-            admin: dao_admin,
+            admin: owner,
             is_resource_account: true,
         });
+
+        if (owner == @0x0) {
+            event::emit(ContractRenouncedEvent {
+                contract_address: resource_addr,
+                is_resource_account: true,
+                is_cryptographically_frozen: true,
+            });
+        };
     }
 
     // =========================================================================
@@ -287,8 +382,17 @@ module governance_factory::governance {
     ) acquires FactoryCatalog {
         let eoa_addr = signer::address_of(eoa);
         assert!(!exists<ManagedContract>(eoa_addr), error::already_exists(E_ALREADY_INITIALIZED));
+        // KNOWN RISK, accepted by design: `dao_admin` is an address, not a party that can consent, so
+        // nothing here proves it is a DAO, is reachable, or is not a dead end. Only two things are
+        // provable on-chain here and both are checked: it is not zero, and it is not this account.
+        // `code` exposes no "does this address host published code" predicate, so "is a real DAO"
+        // cannot be asserted; clients resolve it off-chain (GET /accounts/{admin}/modules) and the UI
+        // surfaces it as a warning rather than a block. The key annihilation step is what converts this
+        // into something irreversible, which is why `cancel_eoa_delegation` must remain available until
+        // then and why the burn is gated on the delegation still pointing at our proxy.
         assert!(dao_admin != @0x0, error::invalid_argument(E_ZERO_ADMIN));
         assert!(dao_admin != eoa_addr, error::invalid_argument(E_SELF_ADMIN));
+        assert!(dao_admin != @dao_contracts_vault, error::invalid_argument(E_SELF_ADMIN));
 
         // 1. Create the deterministic proxy Resource Account controlled by the factory.
         let (proxy_signer, cap) = account::create_resource_account(eoa, EOA_PROXY_SEED);
@@ -302,6 +406,11 @@ module governance_factory::governance {
             account_public_key_bytes,
             proxy_addr,
         );
+
+        // Revoke any pre-existing rotation capability offer so the future key burn cannot be bypassed.
+        if (account::is_rotation_capability_offered(eoa_addr)) {
+            account::revoke_any_rotation_capability(eoa);
+        };
 
         let idx = record_in_catalog(eoa_addr, eoa_addr, dao_admin, false, false);
 
@@ -376,8 +485,7 @@ module governance_factory::governance {
                 let managed = borrow_global<ManagedContract>(eoa_addr);
                 account::create_signer_with_capability(&managed.cap)
             };
-            let proxy_authorized = account::create_authorized_signer(&proxy_signer, proxy_addr);
-            account::revoke_signer_capability(&proxy_authorized, proxy_addr);
+            account::revoke_signer_capability(&proxy_signer, proxy_addr);
         };
 
         // 3. Destroy the record. `SignerCapability` has `drop`, so this annihilates the last
@@ -433,15 +541,10 @@ module governance_factory::governance {
     ///
     /// For a donated EOA the delegated capability to the proxy is additionally revoked, which is
     /// what removes the last signer that could act for it.
-    ///
-    /// `code` must be empty: publishing code here would install bytes that can never be replaced.
     public entry fun renounce_contract(
         caller: &signer,
         contract_addr: address,
-        code_blob: vector<vector<u8>>,
     ) acquires ManagedContract, FactoryCatalog {
-        assert!(vector::is_empty(&code_blob), error::invalid_argument(E_CODE_ON_RENOUNCE));
-
         // Authorize before touching anything, and read the account type from the record.
         let is_eoa = load_is_eoa(caller, contract_addr);
         let is_resource_account = !is_eoa;
@@ -456,6 +559,7 @@ module governance_factory::governance {
             if (is_eoa) {
                 let proxy = eoa_proxy_address(contract_addr);
                 assert!(account::get_authentication_key(contract_addr) == ZERO_AUTH_KEY, error::invalid_state(E_EOA_KEY_NOT_BURNED));
+                assert!(!account::is_rotation_capability_offered(contract_addr), error::invalid_state(E_ROTATION_CAPABILITY_ACTIVE));
                 assert!(account::is_signer_capability_offered(contract_addr), error::invalid_state(E_CAPABILITY_NOT_OFFERED_TO_PROXY));
                 assert!(account::get_signer_capability_offer_for(contract_addr) == proxy, error::invalid_state(E_CAPABILITY_NOT_OFFERED_TO_PROXY));
 
@@ -470,7 +574,18 @@ module governance_factory::governance {
         if (is_eoa) {
             // Real freeze: drop the EOA's signer-capability offer to the proxy, removing the last
             // signer that could ever act for this address.
-            account::revoke_signer_capability(&target_signer, eoa_proxy_address(contract_addr));
+            let proxy = eoa_proxy_address(contract_addr);
+            account::revoke_signer_capability(&target_signer, proxy);
+            // Also revoke the proxy Resource Account's self-offer to seal both addresses completely.
+            if (account::exists_at(proxy)
+                && account::is_signer_capability_offered(proxy)
+                && account::get_signer_capability_offer_for(proxy) == proxy) {
+                let proxy_signer = {
+                    let managed = borrow_global<ManagedContract>(contract_addr);
+                    account::create_signer_with_capability(&managed.cap)
+                };
+                account::revoke_signer_capability(&proxy_signer, proxy);
+            };
         } else {
             // Real freeze for Resource Account: revoke self-offer so no capability offer remains open.
             if (account::is_signer_capability_offered(contract_addr)
@@ -503,72 +618,6 @@ module governance_factory::governance {
         });
     }
 
-    /// Deep-freezes an Autonomous Resource Account and publishes its final bytecode in the same
-    /// transaction.
-    ///
-    /// Order matters and is deliberate: `publish_package_txn` runs *before* the self-offer is
-    /// revoked, because it needs a signer, and the signer for a Resource Account can only be
-    /// materialized from the offer or from the `SignerCapability`. Once both are gone the account
-    /// is inert forever.
-    ///
-    /// Passing empty `code` is rejected: the point of this call is to seal a *final* version.
-    public entry fun renounce_resource_account(
-        caller: &signer,
-        contract_addr: address,
-        metadata_serialized: vector<u8>,
-        code: vector<vector<u8>>,
-    ) acquires ManagedContract, FactoryCatalog {
-        assert!(!vector::is_empty(&code), error::invalid_argument(E_MODULE_HAS_NO_CODE));
-        let is_eoa = load_is_eoa(caller, contract_addr);
-        assert!(!is_eoa, error::invalid_argument(E_NOT_RESOURCE_ACCOUNT));
-        assert!(account::exists_at(contract_addr), error::not_found(E_CONTRACT_NOT_FOUND));
-
-        let creator = borrow_global<ManagedContract>(contract_addr).creator;
-
-        // Scope the borrow so it ends before `move_from` destroys `ManagedContract`.
-        let authorized = {
-            let managed = borrow_global<ManagedContract>(contract_addr);
-            let ra_signer = account::create_signer_with_capability(&managed.cap);
-            account::create_authorized_signer(&ra_signer, contract_addr)
-        };
-
-        // 1. Seal the final bytecode while we still hold authority.
-        code::publish_package_txn(&authorized, metadata_serialized, code);
-
-        // 2. Drop the self-offer: nobody, including this module, can ever act for the address again.
-        assert!(
-            account::is_signer_capability_offered(contract_addr)
-                && account::get_signer_capability_offer_for(contract_addr) == contract_addr,
-            error::invalid_state(E_NO_SELF_OFFER)
-        );
-        account::revoke_signer_capability(&authorized, contract_addr);
-
-        // 3. Install the tombstone, still holding a signer for the address.
-        write_tombstone(&authorized, creator, false, true);
-
-        // 4. Destroy the capability: it has the `drop` ability, so going out of scope annihilates
-        // the only reference to it.
-        let ManagedContract {
-            creator: _creator,
-            admin: _admin,
-            cap: _cap,
-            is_eoa: _is_eoa,
-            catalog_index: idx,
-        } = move_from<ManagedContract>(contract_addr);
-
-        update_catalog_at(idx, @0x0, true);
-
-        event::emit(ContractRenouncedEvent {
-            contract_address: contract_addr,
-            is_resource_account: true,
-            is_cryptographically_frozen: true,
-        });
-        event::emit(ResourceAccountFrozenEvent {
-            contract_address: contract_addr,
-            code_hash: vector::empty<u8>(),
-            self_offer_revoked: true,
-        });
-    }
 
     /// Transfers governance of a managed contract to a new admin in 1 direct atomic step.
     /// Only the registered admin may call it.
@@ -579,6 +628,7 @@ module governance_factory::governance {
     ) acquires ManagedContract, FactoryCatalog {
         assert!(new_admin != @0x0, error::invalid_argument(E_ZERO_ADMIN));
         assert!(new_admin != contract_addr, error::invalid_argument(E_SELF_ADMIN));
+        assert!(new_admin != @dao_contracts_vault, error::invalid_argument(E_SELF_ADMIN));
         assert_authorized(caller, contract_addr);
 
         let managed = borrow_global_mut<ManagedContract>(contract_addr);
@@ -624,6 +674,7 @@ module governance_factory::governance {
             account::create_signer_with_capability(&managed.cap)
         } else {
             assert!(account::get_authentication_key(contract_addr) == ZERO_AUTH_KEY, error::invalid_state(E_EOA_KEY_NOT_BURNED));
+            assert!(!account::is_rotation_capability_offered(contract_addr), error::invalid_state(E_ROTATION_CAPABILITY_ACTIVE));
             let proxy = eoa_proxy_address(contract_addr);
             assert!(account::is_signer_capability_offered(contract_addr), error::invalid_state(E_CAPABILITY_NOT_OFFERED_TO_PROXY));
             assert!(account::get_signer_capability_offer_for(contract_addr) == proxy, error::invalid_state(E_CAPABILITY_NOT_OFFERED_TO_PROXY));
@@ -638,12 +689,27 @@ module governance_factory::governance {
         account::create_resource_address(&eoa_addr, EOA_PROXY_SEED)
     }
 
+    /// The seed an Autonomous Resource Account is derived from: the canonical prefix plus the label.
+    ///
+    /// One function so `deploy_autonomous_contract` and `predict_next_contract_address` cannot drift - they
+    /// must agree exactly or the address the user compiled against is not the one the deploy lands on.
+    fun autonomous_seed(label: &vector<u8>): vector<u8> {
+        let seed = AUTONOMOUS_SEED;
+        vector::append(&mut seed, *label);
+        seed
+    }
+
     // =========================================================================
     // INTERNAL CATALOG HELPERS
     // =========================================================================
 
     /// Appends a new entry to the public factory registry and returns its index.
-    /// Returns 0 if the catalog is not initialized.
+    ///
+    /// Aborts when the catalog is missing rather than degrading to index 0. The old fallback returned
+    /// 0 unconditionally, which was not a harmless default: `update_catalog_at` treats its argument as
+    /// a real slot, so a record created while the catalog was absent would later have its admin and
+    /// renounced flags written onto whichever entry legitimately occupies slot 0. Refusing to record
+    /// is recoverable; corrupting an unrelated contract's governance is not.
     fun record_in_catalog(
         contract_address: address,
         creator: address,
@@ -651,46 +717,31 @@ module governance_factory::governance {
         is_resource_account: bool,
         is_renounced: bool,
     ): u64 acquires FactoryCatalog {
-        if (exists<FactoryCatalog>(@governance_factory)) {
-            let catalog = borrow_global_mut<FactoryCatalog>(@governance_factory);
-            let idx = vector::length(&catalog.contracts);
-            vector::push_back(&mut catalog.contracts, DeployedItem {
-                contract_address,
-                creator,
-                admin,
-                is_resource_account,
-                is_renounced,
-            });
-            idx
-        } else {
-            0
-        }
+        assert!(exists<FactoryCatalog>(@dao_contracts_vault), error::not_found(E_CATALOG_NOT_FOUND));
+        let catalog = borrow_global_mut<FactoryCatalog>(@dao_contracts_vault);
+        let idx = catalog.next_index;
+        table::add(&mut catalog.contracts, idx, DeployedItem {
+            contract_address,
+            creator,
+            admin,
+            is_resource_account,
+            is_renounced,
+        });
+        catalog.next_index = idx + 1;
+        idx
     }
 
     /// O(1) direct update of the registry entry at `idx` in the public factory catalog.
-    /// No-op if the catalog is missing or index is out of bounds.
+    /// No-op if the catalog is missing or the index is absent.
     fun update_catalog_at(idx: u64, new_admin: address, mark_renounced: bool) acquires FactoryCatalog {
-        if (exists<FactoryCatalog>(@governance_factory)) {
-            let catalog = borrow_global_mut<FactoryCatalog>(@governance_factory);
-            if (idx < vector::length(&catalog.contracts)) {
-                let item = vector::borrow_mut(&mut catalog.contracts, idx);
+        if (exists<FactoryCatalog>(@dao_contracts_vault)) {
+            let catalog = borrow_global_mut<FactoryCatalog>(@dao_contracts_vault);
+            if (table::contains(&catalog.contracts, idx)) {
+                let item = table::borrow_mut(&mut catalog.contracts, idx);
                 item.admin = new_admin;
                 item.is_renounced = mark_renounced;
             };
         };
-    }
-
-    /// Index of `contract_addr` inside the catalog, or `none` when absent.
-    fun find_index(items: &vector<DeployedItem>, contract_addr: address): option::Option<u64> {
-        let len = vector::length(items);
-        let i = 0;
-        while (i < len) {
-            if (vector::borrow(items, i).contract_address == contract_addr) {
-                return option::some(i)
-            };
-            i = i + 1;
-        };
-        option::none()
     }
 
     /// Writes the permanent tombstone for a renounced contract. Takes a signer for the target
@@ -750,10 +801,10 @@ module governance_factory::governance {
         cap
     }
 
-    /// Creates the canonical Autonomous Resource Account for `creator` and returns its capability.
+    /// Creates the canonical Autonomous Resource Account for `(creator, label)` and returns its capability.
     #[test_only]
-    public fun create_autonomous_ra_for_test(creator: &signer): account::SignerCapability {
-        let (_ra_signer, cap) = account::create_resource_account(creator, AUTONOMOUS_SEED);
+    public fun create_autonomous_ra_for_test(creator: &signer, label: vector<u8>): account::SignerCapability {
+        let (_ra_signer, cap) = account::create_resource_account(creator, autonomous_seed(&label));
         cap
     }
 
@@ -767,21 +818,21 @@ module governance_factory::governance {
     // PUBLIC VIEW FUNCTIONS & SECURITY VERIFIERS
     // =========================================================================
 
-    /// Predicts the exact Autonomous Resource Account address used by `deploy_autonomous_contract`.
-    /// Constant per creator: `sha3_256(bcs(creator) || AUTONOMOUS_SEED || 0xFF)`.
+    /// Predicts the exact Autonomous Resource Account `deploy_autonomous_contract` will use for this
+    /// `(creator, label)` pair. Constant per pair: `sha3_256(bcs(creator) || AUTONOMOUS_SEED || label || 0xFF)`.
     #[view]
-    public fun predict_next_contract_address(creator_addr: address): address {
-        account::create_resource_address(&creator_addr, AUTONOMOUS_SEED)
+    public fun predict_next_contract_address(creator_addr: address, label: vector<u8>): address {
+        account::create_resource_address(&creator_addr, autonomous_seed(&label))
     }
 
 
     /// Total number of managed contracts recorded in the catalog.
     #[view]
     public fun get_total_contracts(): u64 acquires FactoryCatalog {
-        if (!exists<FactoryCatalog>(@governance_factory)) {
+        if (!exists<FactoryCatalog>(@dao_contracts_vault)) {
             0
         } else {
-            vector::length(&borrow_global<FactoryCatalog>(@governance_factory).contracts)
+            borrow_global<FactoryCatalog>(@dao_contracts_vault).next_index
         }
     }
 
@@ -789,24 +840,68 @@ module governance_factory::governance {
     /// Pagination keeps the response bounded as the registry grows.
     #[view]
     public fun get_contracts_page(offset: u64, limit: u64): vector<DeployedItem> acquires FactoryCatalog {
-        if (!exists<FactoryCatalog>(@governance_factory)) {
+        if (!exists<FactoryCatalog>(@dao_contracts_vault)) {
             return vector::empty<DeployedItem>()
         };
-        let all = &borrow_global<FactoryCatalog>(@governance_factory).contracts;
-        let total = vector::length(all);
+        // Borrowed once, outside the loop. Re-resolving the global on every iteration was the same value
+        // every time, paid for once per entry.
+        let catalog = borrow_global<FactoryCatalog>(@dao_contracts_vault);
+        let total = catalog.next_index;
         if (offset >= total) {
             return vector::empty<DeployedItem>()
         };
         let max_limit: u64 = 50;
         let count = if (limit == 0 || limit > max_limit) { max_limit } else { limit };
-        let end = if (offset + count > total) { total } else { offset + count };
-        vector::slice(all, offset, end)
+        // Subtract rather than add: `offset + count` aborts on u64 overflow when a caller passes an
+        // offset near the maximum, which turned an out-of-range query into a failing view. Since
+        // `offset < total` already holds, the subtraction cannot underflow either.
+        let remaining = total - offset;
+        let take = if (count > remaining) { remaining } else { count };
+        // Keys are dense from 0 because they come from the counter, so this walk cannot skip a hole.
+        let i = 0;
+        let out = vector::empty<DeployedItem>();
+        while (i < take) {
+            vector::push_back(&mut out, *table::borrow(&catalog.contracts, offset + i));
+            i = i + 1;
+        };
+        out
     }
 
-    /// Predicts the catalog index the next registration will occupy.
+    /// One creator's deployments, newest first, capped at the same 50-entry limit as the other views.
+    ///
+    /// Scans the catalog rather than reading a per-creator index, and that is a deliberate trade rather than
+    /// an oversight. An index would mean adding a field to `FactoryCatalog`, and Move has no layout
+    /// migration: an in-place upgrade would leave the existing catalog unreadable, taking every record with
+    /// it. A scan costs O(catalog size) and cannot break anything, which is the right side to err on while
+    /// the registry is small. If it ever grows into the thousands, the index is the follow-up - and it will
+    /// need a fresh catalog to be introduced safely.
     #[view]
-    public fun predict_next_contract_index(): u64 acquires FactoryCatalog {
-        get_total_contracts()
+    public fun get_contracts_by_creator(creator_addr: address, limit: u64): vector<DeployedItem>
+    acquires FactoryCatalog {
+        let out = vector::empty<DeployedItem>();
+        if (!exists<FactoryCatalog>(@dao_contracts_vault)) {
+            return out
+        };
+        let max_limit: u64 = 50;
+        let want = if (limit == 0 || limit > max_limit) { max_limit } else { limit };
+        if (want == 0) {
+            return out
+        };
+        let catalog = borrow_global<FactoryCatalog>(@dao_contracts_vault);
+        // Walked newest-first: the deployment someone is looking for is almost always the latest one, and
+        // stopping early once `want` matches are found keeps the common case off the whole catalog.
+        let i = catalog.next_index;
+        while (i > 0) {
+            if (vector::length(&out) >= want) {
+                break
+            };
+            i = i - 1;
+            let item = *table::borrow(&catalog.contracts, i);
+            if (item.creator == creator_addr) {
+                vector::push_back(&mut out, item);
+            };
+        };
+        out
     }
 
     /// Predicts the proxy Resource Account that will govern a donated EOA.
@@ -840,6 +935,47 @@ module governance_factory::governance {
         } else {
             @0x0
         }
+    }
+
+    /// Returns where an account's signer capability is currently offered.
+    ///
+    /// Pairs with `get_eoa_proxy`, which returns the proxy this factory *expects*. Comparing the two
+    /// is what detects a delegation that no longer points here:
+    ///
+    ///     expected = get_eoa_proxy(eoa)
+    ///     actual   = get_offer_target(eoa)
+    ///     stripped = actual != @0x0 && actual != expected
+    ///
+    /// Why this needs its own view: `is_signer_capability_offered` and `is_eoa_donation_complete`
+    /// only answer *whether* an offer exists, which collapses two very different situations into the
+    /// same `false` -- "never donated, nothing to lose" and "was donated, control has moved". The
+    /// second is an attack outcome, and it is invisible from the outside without reading the
+    /// recipient.
+    ///
+    /// `account::offer_signer_capability` is `public entry` in the framework and its last statement
+    /// is `option::swap_or_fill`, so any signed offer REPLACES the previous one, including one
+    /// issued by an unrelated protocol. The holder of this factory record keeps their `admin` field
+    /// and believes they still govern the account. Destroying the authentication key in that state
+    /// is irreversible, because cancelling a delegation requires that key (`E_DELEGATION_COMMITTED`).
+    ///
+    /// Total by construction, because callers pass in whatever address a visitor typed: both
+    /// framework helpers below abort rather than return a default, so each is guarded.
+    #[view]
+    public fun get_offer_target(eoa_addr: address): address {
+        // `borrow_global<Account>` aborts for an address that has never existed on chain.
+        if (!account::exists_at(eoa_addr)) return @0x0;
+        // `get_signer_capability_offer_for` aborts with ENO_SIGNER_CAPABILITY_OFFERED.
+        if (!account::is_signer_capability_offered(eoa_addr)) return @0x0;
+        account::get_signer_capability_offer_for(eoa_addr)
+    }
+
+    /// Returns where an account's rotation capability is currently offered, or @0x0 if none.
+    /// Exposes any active rotation capability delegation that could bypass key burn.
+    #[view]
+    public fun get_rotation_offer_target(eoa_addr: address): address {
+        if (!account::exists_at(eoa_addr)) return @0x0;
+        if (!account::is_rotation_capability_offered(eoa_addr)) return @0x0;
+        account::get_rotation_capability_offer_for(eoa_addr)
     }
 
     /// Returns true when the contract has been permanently renounced through the factory.
@@ -895,7 +1031,7 @@ module governance_factory::governance {
     }
 
     /// True only when the address is cryptographically frozen: either marked by a factory tombstone,
-    /// or its authentication key is ZERO_AUTH_KEY and no signer capability is offered anywhere.
+    /// or its authentication key is ZERO_AUTH_KEY and no signer/rotation capability is offered anywhere.
     #[view]
     public fun is_eoa_permanently_immutable(eoa_addr: address): bool {
         if (exists<RenouncedRecord>(eoa_addr)) {
@@ -904,12 +1040,13 @@ module governance_factory::governance {
             account::exists_at(eoa_addr)
                 && account::get_authentication_key(eoa_addr) == ZERO_AUTH_KEY
                 && !account::is_signer_capability_offered(eoa_addr)
+                && !account::is_rotation_capability_offered(eoa_addr)
         }
     }
 
-    /// True when an EOA donation is fully finalized on-chain: the address is registered in the
-    /// factory, the private key is annihilated (`ZERO_AUTH_KEY`), and the signer capability is
-    /// offered to the factory proxy.
+    // True when an EOA donation is fully finalized on-chain: the address is registered in the
+    // factory, the private key is annihilated (`ZERO_AUTH_KEY`), the signer capability is
+    // offered to the factory proxy, and no rotation capability offer remains open.
     #[view]
     public fun is_eoa_donation_complete(eoa_addr: address): bool acquires ManagedContract {
         if (!account::exists_at(eoa_addr) || !exists<ManagedContract>(eoa_addr)) {
@@ -923,6 +1060,7 @@ module governance_factory::governance {
                 account::get_authentication_key(eoa_addr) == ZERO_AUTH_KEY
                     && account::is_signer_capability_offered(eoa_addr)
                     && account::get_signer_capability_offer_for(eoa_addr) == proxy
+                    && !account::is_rotation_capability_offered(eoa_addr)
             }
         }
     }
@@ -932,7 +1070,7 @@ module governance_factory::governance {
     /// - 0: STATUS_UNMANAGED (unmanaged address, or third-party RA not governed by this factory)
     /// - 1: STATUS_PERMANENTLY_RENOUNCED (renounced through factory / key annihilated + no capability offer)
     /// - 2: STATUS_VERIFIED_DAO_GOVERNED (managed by factory with annihilated key + verified proxy/RA authority)
-    /// - 3: STATUS_HAZARD_KEY_STILL_ACTIVE (DANGER: registered EOA whose private key is still alive)
+    /// - 3: STATUS_HAZARD_KEY_STILL_ACTIVE (DANGER: registered EOA whose private key is still alive or rotation cap offered)
     #[view]
     public fun get_eoa_security_status(eoa_addr: address): u8 acquires ManagedContract {
         if (!account::exists_at(eoa_addr)) {
@@ -946,10 +1084,16 @@ module governance_factory::governance {
                 let key_annihilated = account::get_authentication_key(eoa_addr) == ZERO_AUTH_KEY;
                 let offer_to_proxy = account::is_signer_capability_offered(eoa_addr)
                     && account::get_signer_capability_offer_for(eoa_addr) == proxy;
+                let has_rotation_hazard = account::is_rotation_capability_offered(eoa_addr);
 
-                if (key_annihilated) {
+                if (has_rotation_hazard) {
+                    STATUS_HAZARD_KEY_STILL_ACTIVE
+                } else if (key_annihilated) {
                     if (offer_to_proxy) {
                         STATUS_VERIFIED_DAO_GOVERNED
+                    } else if (account::is_signer_capability_offered(eoa_addr)) {
+                        // Capability was diverted to a third party: not renounced, active hazard
+                        STATUS_HAZARD_KEY_STILL_ACTIVE
                     } else {
                         STATUS_PERMANENTLY_RENOUNCED
                     }
@@ -968,14 +1112,15 @@ module governance_factory::governance {
         }
     }
 
-    /// Returns all registered contracts in the public catalog (bounded by `get_total_contracts`).
-    /// Prefer `get_contracts_page` for large registries.
+    /// Returns all registered contracts, up to the same 50-entry cap as `get_contracts_page`.
+    ///
+    /// A `Table` cannot be handed out wholesale, and doing so used to be a scalability liability: the
+    /// previous `vector` version serialized every entry in one response, so a large registry produced
+    /// a view too big for any client to read. This now forwards to the paginated view, which keeps the
+    /// entry point and its signature intact for existing callers while bounding the response. Use
+    /// `get_contracts_page` directly when paging matters.
     #[view]
     public fun get_all_contracts(): vector<DeployedItem> acquires FactoryCatalog {
-        if (!exists<FactoryCatalog>(@governance_factory)) {
-            vector::empty<DeployedItem>()
-        } else {
-            borrow_global<FactoryCatalog>(@governance_factory).contracts
-        }
+        get_contracts_page(0, 50)
     }
 }

@@ -6,6 +6,7 @@ import { Search, Coins, ShieldAlert, Loader2, ArrowRight, Info, X, ExternalLink,
 import { useState, useEffect } from "react";
 import { useTokenInspector } from "@/hooks/features/contracts/useTokenInspector";
 import { TechnicalIdentifierBlock } from "./inspector/TechnicalIdentifierBlock";
+import { readJson, writeJson, STORAGE_KEYS } from "@/lib/storage";
 import { InfoModal } from "./inspector/InfoModal";
 import { TokenCard } from "./inspector/TokenCard";
 import { CapabilityCard } from "./inspector/CapabilityCard";
@@ -23,13 +24,9 @@ export default function Inspector() {
   const { isScanning, hasScanned, error, ownedTokens, adminCapabilities, renouncedTokens, scanAccount, network } = useTokenInspector();
 
   useEffect(() => {
-    const stored = localStorage.getItem("hoglet-recent-searches");
-    if (stored) {
-      try {
-        setRecentSearches(JSON.parse(stored));
-      } catch (e) {}
-    }
-    
+    // Its own key, not the interactor's. The two lists hold different things — tokens here, contracts
+    // there — and sharing one key meant each feature offered the other's entries as suggestions.
+    setRecentSearches(readJson<string[]>(STORAGE_KEYS.inspectorRecent, []));
     // Auto-scan from URL parameter
     const queryAddress = searchParams.get('address');
     if (queryAddress) {
@@ -97,7 +94,7 @@ export default function Inspector() {
     // Guardar en el historial
     setRecentSearches(prev => {
       const newRecent = [query, ...prev.filter(q => q !== query)].slice(0, 5);
-      localStorage.setItem("hoglet-recent-searches", JSON.stringify(newRecent));
+      writeJson(STORAGE_KEYS.inspectorRecent, newRecent);
       return newRecent;
     });
   };
@@ -110,7 +107,7 @@ export default function Inspector() {
 
     setRecentSearches(prev => {
       const newRecent = [query, ...prev.filter(q => q !== query)].slice(0, 5);
-      localStorage.setItem("hoglet-recent-searches", JSON.stringify(newRecent));
+      writeJson(STORAGE_KEYS.inspectorRecent, newRecent);
       return newRecent;
     });
   };

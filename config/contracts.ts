@@ -10,7 +10,13 @@ export const CONTRACT_SWAP = "0x0dc694898dff98a1b0447e0992d0413e123ea80da1021d46
 // Ejemplo de token (puedes añadir más)
 export const MEME_TOKEN_ADDRESS = `${CONTRACT_FAUCET}::memecoins::SPIKE`;
 
-// Governance Factory: deploys decentralized modules and drives cryptographic renouncement.
-// Falls back to the 0x1 address (as any EOA) when the factory has not been published yet.
-export const GOVERNANCE_FACTORY =
-  process.env.NEXT_PUBLIC_GOVERNANCE_FACTORY || "0x1";
+// DAO Contracts Vault: deploys decentralized modules into Resource Accounts and drives renouncement and
+// EOA delegation. The module lives at this address under `dao_contracts_vault::vault`.
+//
+// Falls back to `0x1` (a bare EOA with no modules published) when unset, which makes the audit report
+// "no factory record" rather than failing — the same behaviour as an address the vault does not know.
+export const DAO_CONTRACTS_VAULT =
+  process.env.NEXT_PUBLIC_DAO_CONTRACTS_VAULT || "0x1";
+
+/** Module inside the vault package that exposes every view and entry point this app calls. */
+export const VAULT_MODULE = "vault";

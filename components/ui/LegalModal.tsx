@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { readStored, writeStored, STORAGE_KEYS } from "@/lib/storage";
 
 export function LegalModal() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const accepted = localStorage.getItem("legal_accepted_v1");
+    const accepted = readStored(STORAGE_KEYS.legalAccepted);
     if (!accepted) {
       setShow(true);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem("legal_accepted_v1", "true");
+    writeStored(STORAGE_KEYS.legalAccepted, "true");
     setShow(false);
   };
 

@@ -5,14 +5,21 @@ const MESSAGES = path.join(__dirname, "..", "messages");
 const LOCALES = ["ar", "de", "en", "es", "fr", "ha", "hi", "id", "ja", "ko", "pt", "ru", "zh"];
 const NS = "Governance";
 
-// Keys referenced by the governance UI. Scan every component in the folder, since the lifecycle
-// runner lives in its own file.
+// Keys referenced by the governance UI. Walk the folder recursively: the lifecycle runner and the
+// workspace were each split into their own subfolders, and those hold most of the strings.
 const SRC_DIR = path.join(__dirname, "..", "components", "governance");
-const sources = fs
-  .readdirSync(SRC_DIR)
-  .filter((f) => f.endsWith(".tsx"))
-  .map((f) => fs.readFileSync(path.join(SRC_DIR, f), "utf8"));
-const src = sources.join("\n");
+function readSources(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...readSources(full));
+    // `.ts` too: `STATUS_META` moved out of the component into `statusMeta.ts`, and its `key:` fields
+    // are looked up dynamically through `t(meta.key)`.
+    else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) out.push(fs.readFileSync(full, "utf8"));
+  }
+  return out;
+}
+const src = readSources(SRC_DIR).join("\n");
 
 const used = new Set();
 // Require a boundary before `t(` so calls like `connect("starkey")` are not mistaken for `t("...")`.
@@ -20,6 +27,9 @@ for (const m of src.matchAll(/(?<![A-Za-z0-9_])t\(\s*"([a-zA-Z0-9_]+)"/g)) used.
 for (const m of src.matchAll(/key:\s*"([a-zA-Z0-9_]+)"/g)) used.add(m[1]);
 // Lookup maps such as STAGE_KEY keep their strings as values, not as t("...") arguments.
 for (const m of src.matchAll(/^\s*[a-zA-Z0-9_]+:\s*"(stage_[a-zA-Z0-9_]+)"/gm)) used.add(m[1]);
+// Glossary entries pass their key in a `termKey` field, so next-intl receives a variable rather
+// than a literal. They are real runtime dependencies and must be counted as used.
+for (const m of src.matchAll(/termKey:\s*"([a-zA-Z0-9_]+)"/g)) used.add(m[1]);
 
 // The dynamic action keys are referenced through the LIFECYCLE_ACTIONS table.
 const actionKeys = [...src.matchAll(/key:\s*"(action[A-Za-z0-9_]*)"/g)].map((m) => m[1]);

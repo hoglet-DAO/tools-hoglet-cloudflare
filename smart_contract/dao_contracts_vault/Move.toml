@@ -1,0 +1,18 @@
+[package]
+name = "governance_vault"
+version = "1.0.0"
+
+[addresses]
+
+# EOA that signs the deployment (creator) and holds PackageAdmin.
+RENOUNCE = "0xe799069a01bcb4e79a714d685a0fa850e644d9b0d973844ad37dd46b543570c9"
+# Package address = Resource Account derived from RENOUNCE + deploy seed.
+# Verified on chain: this is the account that hosts `dao_contracts_vault::vault`.
+dao_contracts_vault = "0xcaf5cab2ae67ba5e86aba32506282a2adf3cddcc452b15797382b1b52f37fcb3"
+# The admin named address used by publisher::init_module (must be the RA creator).
+admin = "0xe799069a01bcb4e79a714d685a0fa850e644d9b0d973844ad37dd46b543570c9"
+
+[dependencies.SupraFramework]
+git = "https://github.com/Entropy-Foundation/aptos-core.git"
+rev = "dev"
+subdir = "aptos-move/framework/supra-framework"
