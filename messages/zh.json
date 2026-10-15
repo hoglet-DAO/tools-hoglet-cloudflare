@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "加载中...",
-    "getFreeSupra": "免费获取 Supra",
-    "governance": "治理",
-    "accountControl": "账户控制"
+    "getFreeSupra": "免费获取 Supra"
   },
   "Governance": {
     "factoryNotPublished": "治理工厂尚未发布。请将 NEXT_PUBLIC_GOVERNANCE_FACTORY 设置为你已部署的模块地址。",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "先让你的管理员重新掌权，或把账户转移到你控制的管理员名下。在此销毁密钥不会恢复任何东西 —— 只会让丢失变为永久。",
     "burnExpectedProxy": "预期的代理",
     "burnActualOffer": "实际委托给",
-    "hubContractsTitle": "无钥合约金库",
-    "hubContractsSubtitle": "发布无钥模块，把控制权交给任意地址，或永久放弃它。",
+    "hubContractsTitle": "部署合约",
+    "hubContractsSubtitle": "一个没有私钥的模块，发布到它自己的资源账户。把控制权交给任意地址，或永久放弃它。",
     "hubAccountsTitle": "账户控制",
     "hubAccountsSubtitle": "把这个账户交给管理员、收回控制权，或销毁密钥让任何人都永远无法再行动。",
     "runnerAccountUnmanagedBody": "还没有人掌管这个账户。把它交给管理员，或销毁密钥让它永远无法使用。",

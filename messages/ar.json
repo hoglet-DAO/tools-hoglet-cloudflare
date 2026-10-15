@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "جار التحميل...",
-    "getFreeSupra": "احصل على Supra مجاناً",
-    "governance": "الحوكمة",
-    "accountControl": "التحكم بالحساب"
+    "getFreeSupra": "احصل على Supra مجاناً"
   },
   "Governance": {
     "factoryNotPublished": "مصنع الحوكمة غير منشور بعد. عيّن NEXT_PUBLIC_GOVERNANCE_FACTORY بعنوان الوحدة التي نشرتها.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "أعد مسؤولك إلى الرقابة أولًا، أو انقل الحساب إلى مسؤول تتحكم به. هدم المفتاح هنا لا يستعيد شيئًا: إنه فقط يجعل الفقد دائمًا.",
     "burnExpectedProxy": "الوسيط المتوقع",
     "burnActualOffer": "مُفوَّض فعليًا إلى",
-    "hubContractsTitle": "خزنة العقود بلا مفاتيح",
-    "hubContractsSubtitle": "انشر وحدة بلا مفاتيح، وسلّم التحكم لأي عنوان، أو تنازل عنها نهائيًا.",
+    "hubContractsTitle": "انشر عقدًا",
+    "hubContractsSubtitle": "وحدة بلا مفتاح خاص، تُنشر في حساب موارد خاص بها. سلّم التحكم لأي عنوان، أو تنازل عنها نهائيًا.",
     "hubAccountsTitle": "التحكم بالحساب",
     "hubAccountsSubtitle": "سلّم هذا الحساب إلى مسؤول، أو استعد التحكم، أو اهدم المفتاح ليلا يستطيع أحد أبدًا التصرف.",
     "runnerAccountUnmanagedBody": "لا أحد يسيطر على هذا الحساب بعد. سلّمه إلى مسؤول، أو اهدم المفتاح ليصبح غير قابل للاستخدام إلى الأبد.",

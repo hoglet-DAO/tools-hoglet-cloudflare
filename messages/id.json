@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "Memuat...",
-    "getFreeSupra": "Dapatkan Supra Gratis",
-    "governance": "Tata Kelola",
-    "accountControl": "Kontrol Akun"
+    "getFreeSupra": "Dapatkan Supra Gratis"
   },
   "Governance": {
     "factoryNotPublished": "Pabrik tata kelola belum dipublikasikan. Set NEXT_PUBLIC_GOVERNANCE_FACTORY ke alamat modul Anda.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "embalikan admin Anda memegang kendali dulu, atau pindahkan akun ke admin yang Anda kendalikan. Menghancurkan key di sini tidak memulihkan apa pun — hanya membuat kerugian bersifat permanen.",
     "burnExpectedProxy": "Proxy yang diharapkan",
     "burnActualOffer": "Sebenarnya didelegasikan ke",
-    "hubContractsTitle": "Vault Kontrak Tanpa Key",
-    "hubContractsSubtitle": "Deploy modul tanpa key, serahkan kontrol ke alamat mana pun, atau tinggalkan selamanya.",
+    "hubContractsTitle": "Deploy kontrak",
+    "hubContractsSubtitle": "Modul tanpa kunci privat, dipublikasikan ke akun resource-nya sendiri. Serahkan kontrol ke alamat mana pun, atau tinggalkan selamanya.",
     "hubAccountsTitle": "Kontrol Akun",
     "hubAccountsSubtitle": "Serahkan akun ini ke admin, ambil kembali kontrol, atau hancurkan key sehingga tak seorang pun dapat bertindak lagi.",
     "runnerAccountUnmanagedBody": "Belum ada yang memegang akun ini. Serahkan ke admin, atau hancurkan key agar tidak bisa dipakai lagi.",

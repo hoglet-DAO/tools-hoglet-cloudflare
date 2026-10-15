@@ -1,7 +1,5 @@
 'use client';
-import { Link } from '@/i18n/navigation';
 import { AiOutlineClose } from "react-icons/ai";
-import { useTranslations } from 'next-intl';
 import WalletConnect from './WalletConnect';
 import LanguageSelector from './LanguageSelector';
 
@@ -19,8 +17,6 @@ export default function MobileMenu({
   language,
   setLanguage,
 }: MobileMenuProps) {
-  const t = useTranslations('translation');
-
   if (!toggleMenu) return null;
 
   return (

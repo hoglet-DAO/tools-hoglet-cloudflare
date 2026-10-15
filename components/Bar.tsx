@@ -3,13 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import { AiOutlineClose } from "react-icons/ai";
 import { HiMenuAlt4 } from "react-icons/hi";
 import { useNetwork } from '@/context/NetworkContext';
-import { useTranslations, useLocale } from 'next-intl';
+import { useLocale } from 'next-intl';
 
 // Existing Local Components
 import NetworkSwitchButton from '@/components/EnvironmentToggleButton';
 
 // Adapted Components from src/components/bar
-import Navigation from '@/components/bar/Navigation';
 import LanguageSelector from '@/components/bar/LanguageSelector';
 import WalletConnect from '@/components/bar/WalletConnect';
 import MobileMenu from '@/components/bar/MobileMenu';
@@ -20,7 +19,6 @@ export default function Bar() {
   const activeLocale = useLocale();
   const [language, setLanguage] = useState(activeLocale);
   const { network } = useNetwork();
-  const t = useTranslations('translation');
 
   const handleToggleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); 
@@ -53,8 +51,7 @@ export default function Bar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex flex-grow justify-center items-center gap-4">
             <NetworkSwitchButton />
-            <Navigation t={t} /> {/* Navigation is adapted to use t */}
-            <LanguageSelector language={language} setLanguage={handleLanguageChange} /> {/* handleLanguageChange passed */}
+            <LanguageSelector language={language} setLanguage={handleLanguageChange} />
             <WalletConnect /> {/* WalletConnect is self-contained */}
           </div>
 

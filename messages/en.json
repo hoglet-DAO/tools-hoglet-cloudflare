@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "Loading...",
-    "getFreeSupra": "Get Free Supra",
-    "governance": "Governance",
-    "accountControl": "Account Control"
+    "getFreeSupra": "Get Free Supra"
   },
   "Governance": {
     "factoryNotPublished": "The governance factory is not published yet. Set NEXT_PUBLIC_GOVERNANCE_FACTORY to your deployed module address.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "Put your admin back in charge first, or move the account to an admin you control. Burning the key here does not restore anything — it only makes the loss permanent.",
     "burnExpectedProxy": "Expected proxy",
     "burnActualOffer": "Actually delegated to",
-    "hubContractsTitle": "Keyless Contract Vault",
-    "hubContractsSubtitle": "Deploy a keyless module, hand control to any address, or renounce it for good.",
+    "hubContractsTitle": "Deploy a contract",
+    "hubContractsSubtitle": "A module with no private key, published to its own resource account. Hand control to any address, or renounce it for good.",
     "hubAccountsTitle": "Account Control",
     "hubAccountsSubtitle": "Hand this account to an admin, take the control back, or destroy the key so nobody ever can.",
     "runnerAccountUnmanagedBody": "Nobody is in charge of this account yet. Hand it to an admin, or destroy the key so it can never be used again.",

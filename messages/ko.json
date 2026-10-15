@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "로딩 중...",
-    "getFreeSupra": "무료 Supra 받기",
-    "governance": "거버넌스",
-    "accountControl": "계정 제어"
+    "getFreeSupra": "무료 Supra 받기"
   },
   "Governance": {
     "factoryNotPublished": "거버넌스 팩토리가 아직 게시되지 않았습니다. NEXT_PUBLIC_GOVERNANCE_FACTORY에 배포된 모듈 주소를 설정하세요.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "먼저 관리자를 다시 세워 놓거나, 내가 관리하는 관리자에게 계정을 옮기세요. 여기서 키를 파괴해도 아무것도 복구되지 않고, 손실만 영구적으로 됩니다.",
     "burnExpectedProxy": "예상 프록시",
     "burnActualOffer": "실제 위임 대상",
-    "hubContractsTitle": "키 없는 컨트랙트 볼트",
-    "hubContractsSubtitle": "키 없는 모듈을 배포하고, 어떤 주소에든 제어권을 넘기거나, 영구히 포기하세요.",
+    "hubContractsTitle": "컨트랙트 배포",
+    "hubContractsSubtitle": "개인 키가 전혀 없는 모듈을 자체 리소스 계정에 게시합니다. 어떤 주소에든 제어권을 넘기거나 영구히 포기하세요.",
     "hubAccountsTitle": "계정 제어",
     "hubAccountsSubtitle": "이 계정을 관리자에게 넘기거나, 통제권을 되찾거나, 아무도 다시는 행동할 수 없게 키를 파괴하세요.",
     "runnerAccountUnmanagedBody": "아직 이 계정을 관리하는 사람이 없습니다. 관리자에게 넘기거나, 키를 파괴해 다시는 쓸 수 없게 하세요.",

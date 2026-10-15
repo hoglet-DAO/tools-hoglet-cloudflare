@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "Cargando...",
-    "getFreeSupra": "Obtener Supra Gratis",
-    "governance": "Gobernanza",
-    "accountControl": "Control de la cuenta"
+    "getFreeSupra": "Obtener Supra Gratis"
   },
   "Governance": {
     "factoryNotPublished": "La fábrica de gobernanza aún no está publicada. Define NEXT_PUBLIC_GOVERNANCE_FACTORY con la dirección de tu módulo desplegado.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "Devuelve el control a tu admin primero, o mueve la cuenta a un admin que controles. Destruir la clave aquí no restaura nada: solo hace la pérdida permanente.",
     "burnExpectedProxy": "Proxy esperado",
     "burnActualOffer": "Delegado realmente a",
-    "hubContractsTitle": "Bóveda de Contratos sin Claves",
-    "hubContractsSubtitle": "Despliega un módulo sin claves, entrega el control a cualquier dirección, o renúncialo para siempre.",
+    "hubContractsTitle": "Despliega un contrato",
+    "hubContractsSubtitle": "Un módulo sin clave privada, publicado en su propia cuenta de recurso. Entrega el control a cualquier dirección o renúncialo para siempre.",
     "hubAccountsTitle": "Control de la cuenta",
     "hubAccountsSubtitle": "Entrega esta cuenta a un admin, recupera el control, o destruye la clave para que nadie pueda actuar nunca más.",
     "runnerAccountUnmanagedBody": "Nadie está a cargo de esta cuenta todavía. Entrégasela a un admin, o destruye la clave para que no pueda usarse nunca más.",

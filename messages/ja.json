@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "読み込み中...",
-    "getFreeSupra": "無料Supraを取得",
-    "governance": "ガバナンス",
-    "accountControl": "アカウント制御"
+    "getFreeSupra": "無料Supraを取得"
   },
   "Governance": {
     "factoryNotPublished": "ガバナンスファクトリはまだ公開されていません。NEXT_PUBLIC_GOVERNANCE_FACTORY にデプロイ済みモジュールのアドレスを設定してください。",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "まず管理者を本来の立場に戻し、または自分が管理する管理者にアカウントを移してください。ここで鍵を破壊しても何も元には戻らず、失うことが恒久化するだけです。",
     "burnExpectedProxy": "想定されるプロキシ",
     "burnActualOffer": "実際の委譲先",
-    "hubContractsTitle": "鍵のないコントラクト保管庫",
-    "hubContractsSubtitle": "鍵のないモジュールを公開し、任意のアドレスに支配を渡すか、完全に放棄してください。",
+    "hubContractsTitle": "コントラクトを公開",
+    "hubContractsSubtitle": "プライベートキーを持たないモジュールを、独立したリソースアカウントに公開します。任意のアドレスに支配を渡すか、完全に放棄してください。",
     "hubAccountsTitle": "アカウント制御",
     "hubAccountsSubtitle": "このアカウントを管理者に委譲するか、支配を取り戻すか、鍵を破壊して誰も永遠に行動できないようにする。",
     "runnerAccountUnmanagedBody": "このアカウントはまだ誰も管理していません。管理者に委譲するか、鍵を破壊して二度と使えなくしてください。",

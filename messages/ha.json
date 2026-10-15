@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "Ana lodawa...",
-    "getFreeSupra": "Samu Supra Kyauta",
-    "governance": "Sarakai",
-    "accountControl": "Gabanin kowane"
+    "getFreeSupra": "Samu Supra Kyauta"
   },
   "Governance": {
     "factoryNotPublished": "Babban masauyin sarakaina ba a wallafa ba tukuna. Sanya NEXT_PUBLIC_GOVERNANCE_FACTORY zuwa adireshin kayan aiki da ka wallafa.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "Put your admin back in charge first, or move the account to an admin you control. Burning the key here does not restore anything — it only makes the loss permanent.",
     "burnExpectedProxy": "Batir da a tsani",
     "burnActualOffer": "Aka yana manta wa ga",
-    "hubContractsTitle": "Keyless Contract Vault",
-    "hubContractsSubtitle": "Deploy a module with no key, hand control to any address, or renounce it for good.",
+    "hubContractsTitle": "Deploy a contract",
+    "hubContractsSubtitle": "A module with no private key, published to its own resource account. Hand control to any address, or renounce it for good.",
     "hubAccountsTitle": "Gabanin kowane",
     "hubAccountsSubtitle": "Hand this account to an admin, take the control back, or destroy the key so nobody ever can.",
     "runnerAccountUnmanagedBody": "Nobody is in charge of this account yet. Hand it to an admin, or destroy the key so it can never be used again.",

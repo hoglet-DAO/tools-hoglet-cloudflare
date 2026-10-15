@@ -106,19 +106,20 @@ export function LifecycleRunner({
       )}
 
       {deployOnly && mode === "contracts" ? (
-        <div className="space-y-5">
-          <StageHeader
-            icon={Rocket}
-            title={t("stage_unmanaged")}
-            body={t("runnerUnmanagedBody")}
-            tone="text-gray-300"
-          />
-          <DeployForm
-            t={t}
-            isPending={isPending("deploy_autonomous_contract") || isPending("upgrade_contract")}
-            run={run}
-          />
-        </div>
+        /*
+          No stage header here.
+
+          This page no longer audits a subject, so the stages it once reported do not apply to it. The
+          header read "Stage 1 · untouched — nothing is deployed under this address yet", which is a
+          diagnosis of an audited address and says nothing about the contract about to be created. The
+          page's own heading carries the action; the stage language belongs to the surfaces that
+          actually resolve one.
+        */
+        <DeployForm
+          t={t}
+          isPending={isPending("deploy_autonomous_contract") || isPending("upgrade_contract")}
+          run={run}
+        />
       ) : (
         <>
       {stage === "unmanaged" && (

@@ -21,9 +21,7 @@
   },
   "translation": {
     "loading": "Wird geladen...",
-    "getFreeSupra": "Gratis Supra erhalten",
-    "governance": "Governance",
-    "accountControl": "Konto-Kontrolle"
+    "getFreeSupra": "Gratis Supra erhalten"
   },
   "Governance": {
     "factoryNotPublished": "Die Governance-Factory ist noch nicht veröffentlicht. Setze NEXT_PUBLIC_GOVERNANCE_FACTORY auf deine Moduladresse.",
@@ -165,8 +163,8 @@
     "burnBlockedHint": "Setz zuerst deinen Admin wieder ein, oder verschiebe das Konto auf einen Admin, den du kontrollierst. Den Schlüssel hier zu zerstören stellt nichts wieder her — es macht den Verlust nur endgültig.",
     "burnExpectedProxy": "Erwarteter Proxy",
     "burnActualOffer": "Tatsächlich delegiert an",
-    "hubContractsTitle": "Schlüssellose Vertrags-Vault",
-    "hubContractsSubtitle": "Veröffentliche ein schlüsselloses Modul, übergib die Kontrolle an beliebige Adresse — oder gib es endgültig auf.",
+    "hubContractsTitle": "Vertrag veröffentlichen",
+    "hubContractsSubtitle": "Ein Modul ganz ohne privaten Schlüssel, veröffentlicht in sein eigenes Ressourcenkonto. Übergeben Sie die Kontrolle an beliebige Adresse — oder geben Sie endgültig auf.",
     "hubAccountsTitle": "Konto-Kontrolle",
     "hubAccountsSubtitle": "Gib dieses Konto an einen Admin, hol die Kontrolle zurück oder zerstöre den Schlüssel, sodass nie wieder jemand handeln kann.",
     "runnerAccountUnmanagedBody": "Noch niemand hat die Kontrolle über dieses Konto. Gib es an einen Admin oder zerstöre den Schlüssel, sodass es nie wieder benutzt werden kann.",
