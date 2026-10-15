@@ -79,6 +79,15 @@ const VIEWS = {
 
 type ViewName = keyof typeof VIEWS;
 
+/** One of the creator's deployments, as the factory's registry records it. */
+export interface DeployedContract {
+  address: string;
+  creator: string;
+  admin: string;
+  isResourceAccount: boolean;
+  isRenounced: boolean;
+}
+
 export function useGovernanceAudit() {
   const [verdict, setVerdict] = useState<GovernanceVerdict | null>(null);
   const [isAuditing, setIsAuditing] = useState(false);
@@ -233,5 +242,59 @@ export function useGovernanceAudit() {
     return firstViewResult(res) === true;
   }, []);
 
-  return { verdict, isAuditing, error, audit, predictResourceAccount, predictEoaProxy, isFactoryManaged };
+  /**
+ * Pure view: the contracts this creator deployed through the factory.
+ *
+ * The command bar already lets any address be audited, so this exists only to spare the user pasting their
+ * own entries back in. Walks `get_contracts_by_creator` rather than the whole catalog: a creator cares about
+ * their own, and the view is capped the same way the rest are.
+ */
+const listCreatorContracts = useCallback(async (rpcUrl: string, creator: string): Promise<DeployedContract[]> => {
+  const res = await callViewRaw(
+    rpcUrl,
+    DAO_CONTRACTS_VAULT,
+    VAULT_MODULE,
+    "get_contracts_by_creator",
+    [],
+    [creator, "50"]
+  );
+  const raw = firstViewResult<any[]>(res);
+  if (!Array.isArray(raw)) return [];
+
+  // The RPC serialises a `DeployedItem` either as a positional array of its fields or as an object; both
+  // shapes are read so a change on the service side degrades to a missing label, not to a crash.
+  const out: DeployedContract[] = [];
+  for (const item of raw) {
+    const f = Array.isArray(item)
+      ? {
+          contract_address: item[0],
+          creator: item[1],
+          admin: item[2],
+          is_resource_account: item[3],
+          is_renounced: item[4],
+        }
+      : (item ?? {});
+    const address = normalizeAddressHex(f.contract_address);
+    if (!address) continue;
+    out.push({
+      address,
+      creator: normalizeAddressHex(f.creator) ?? "",
+      admin: normalizeAddressHex(f.admin) ?? "",
+      isResourceAccount: f.is_resource_account === true,
+      isRenounced: f.is_renounced === true,
+    });
+  }
+  return out;
+}, []);
+
+return {
+    verdict,
+    isAuditing,
+    error,
+    audit,
+    predictResourceAccount,
+    predictEoaProxy,
+    isFactoryManaged,
+    listCreatorContracts,
+  };
 }

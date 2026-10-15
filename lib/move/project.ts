@@ -122,6 +122,74 @@ export function projectToFiles(project: ProjectContent): Record<string, string> 
   return files;
 }
 
+/**
+ * Removes Move comments from a source, leaving string literals untouched.
+ *
+ * A package's on-chain metadata carries a source map derived from this text, so the source size with the
+ * comments taken out is a decent proxy for how large a package is before it is compiled — and comments are
+ * the one part the compiler ignores, so counting them would only overstate the estimate.
+ */
+export function stripMoveComments(source: string): string {
+  let out = "";
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === "/" && next === "/") {
+      i += 2;
+      while (i < n && source[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      i += 2;
+      while (i < n && !(source[i] === "*" && source[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+    if (c === '"') {
+      // Copy the literal verbatim, so a `//` inside a string is not mistaken for a comment.
+      out += c;
+      i++;
+      while (i < n) {
+        out += source[i];
+        if (source[i] === "\\") {
+          i++;
+          if (i < n) out += source[i];
+          i++;
+          continue;
+        }
+        if (source[i] === '"') {
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * The stripped-source size of a project, in bytes.
+ *
+ * A live proxy for the package the compile will produce: the on-chain metadata embeds a source map that
+ * grows with the code, so this tracks the part that pushes a package toward the size cap. It is an
+ * estimate, not the answer — the exact artifact size only comes back from the service after a compile.
+ */
+export function sourceSizeBytes(project: ProjectContent): number {
+  const encoder = new TextEncoder();
+  let bytes = 0;
+  for (const m of project.modules) {
+    bytes += encoder.encode(stripMoveComments(m.source)).length;
+  }
+  bytes += encoder.encode(project.tomlOverride ?? buildMoveToml(project.name, project.address)).length;
+  return bytes;
+}
+
 /** Move identifiers allow this subset; anything else would not compile as a file name. */
 export function isValidModulePath(path: string): boolean {
   if (!path || path.length > 120) return false;

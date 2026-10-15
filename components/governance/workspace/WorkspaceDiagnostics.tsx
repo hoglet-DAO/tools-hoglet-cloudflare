@@ -11,6 +11,11 @@ export function WorkspaceDiagnostics({
   error,
   notice,
   saveState,
+  serviceRetry,
+  showRetryNone,
+  showRetryOverride,
+  onRetryNone,
+  onRetryOverride,
   onSelectModule,
 }: {
   t: any;
@@ -20,6 +25,12 @@ export function WorkspaceDiagnostics({
   error: string | null;
   notice: string | null;
   saveState: string;
+  /** True when the last compile's note is actionable (a package too large to hand over). */
+  serviceRetry: boolean;
+  showRetryNone: boolean;
+  showRetryOverride: boolean;
+  onRetryNone: () => void;
+  onRetryOverride: () => void;
   onSelectModule: (path: string) => void;
 }) {
   return (
@@ -47,10 +58,45 @@ export function WorkspaceDiagnostics({
       )}
 
       {notice && (
-        <p className="mt-2 flex items-start gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2 text-[11px] leading-relaxed text-gray-400">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/60" />
-          {notice}
-        </p>
+        <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2 text-[11px] leading-relaxed text-gray-400">
+          <p className="flex items-start gap-2">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/60" />
+            {notice}
+          </p>
+          {/*
+            When the service's note is actionable — the package is too large to hand over — the retry the
+            service recommends is a button, not a paragraph the user has to translate into the advanced panel.
+            The line under it states the one thing the buttons cannot: Supra has no chunked publish, so a
+            package that will not fit has to shrink or be split.
+          */}
+          {serviceRetry && (
+            <div className="mt-2 pl-5">
+              {(showRetryNone || showRetryOverride) && (
+                <div className="flex flex-wrap gap-2">
+                  {showRetryNone && (
+                    <button
+                      type="button"
+                      onClick={onRetryNone}
+                      className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2.5 py-1.5 text-[10px] font-bold text-cyan-200 transition-colors hover:bg-cyan-400/20 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
+                    >
+                      {t("workspaceRetryCompact")}
+                    </button>
+                  )}
+                  {showRetryOverride && (
+                    <button
+                      type="button"
+                      onClick={onRetryOverride}
+                      className="rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-2.5 py-1.5 text-[10px] font-bold text-cyan-200 transition-colors hover:bg-cyan-400/20 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
+                    >
+                      {t("workspaceRetryOverride")}
+                    </button>
+                  )}
+                </div>
+              )}
+              <p className="mt-1.5 text-[10px] leading-relaxed text-gray-600">{t("workspaceChunkUnavailable")}</p>
+            </div>
+          )}
+        </div>
       )}
 
       {ownDiagnostics.length > 0 && (

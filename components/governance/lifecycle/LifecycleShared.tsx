@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Check, FolderOpen, Loader2, Snowflake } from "lucide-react";
+import { AlertTriangle, Check, Copy, FolderOpen, Loader2, Snowflake } from "lucide-react";
 import { formatBytes } from "@/lib/governance/buildArtifacts";
 
 export const inputCls =
@@ -99,6 +99,34 @@ export function SourceTabs({
   );
 }
 
+export function ContractChip({ t, address }: { t: any; address: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-2.5 py-2">
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          {t("govContractLabel")}
+        </span>
+        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-cyan-200/90">{address}</code>
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          aria-label={t("copyAddress")}
+          title={t("copyAddress")}
+          className="shrink-0 rounded p-1 text-gray-500 transition-colors hover:bg-white/5 hover:text-gray-200"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+        </button>
+      </div>
+      <p className="mt-1.5 text-[10px] leading-relaxed text-gray-600">{t("govContractHint")}</p>
+    </div>
+  );
+}
+
 export function Field({
   label,
   hint,
@@ -179,6 +207,7 @@ export function Form({
   cta,
   reason,
   tone = "emerald",
+  hideCta = false,
   onSubmit,
   children,
 }: {
@@ -189,6 +218,13 @@ export function Form({
   cta: string;
   reason?: string;
   tone?: "emerald" | "rose";
+  /**
+   * Suppresses the submit button (and its `reason` hint) entirely.
+   *
+   * For a card whose action must be revealed deliberately: a disabled "destroy everything" button is
+   * still an invitation, and it competes with the control that is supposed to unlock the flow.
+   */
+  hideCta?: boolean;
   onSubmit: () => void | Promise<unknown>;
   children: React.ReactNode;
 }) {
@@ -209,31 +245,35 @@ export function Form({
 
       <div className="mt-4 space-y-3.5">{children}</div>
 
-      <button
-        type="button"
-        disabled={!ready || pending}
-        onClick={onSubmit}
-        className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-auto ${
-          tone === "rose"
-            ? "bg-gradient-to-br from-rose-500 to-red-700 hover:from-rose-400 hover:to-red-600 disabled:hover:shadow-none"
-            : "bg-gradient-to-br from-emerald-400 to-teal-600 hover:from-emerald-300 hover:to-teal-500"
-        } ${tone === "rose" ? "hover:shadow-[0_0_30px_-6px_rgba(244,63,94,0.7)]" : "hover:shadow-[0_0_30px_-6px_rgba(16,185,129,0.6)]"}`}
-      >
-        {pending ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            {cta}…
-          </>
-        ) : (
-          <>
-            {tone === "rose" ? <Snowflake className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-            {cta}
-          </>
-        )}
-      </button>
+      {!hideCta && (
+        <>
+          <button
+            type="button"
+            disabled={!ready || pending}
+            onClick={onSubmit}
+            className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-auto ${
+              tone === "rose"
+                ? "bg-gradient-to-br from-rose-500 to-red-700 hover:from-rose-400 hover:to-red-600 disabled:hover:shadow-none"
+                : "bg-gradient-to-br from-emerald-400 to-teal-600 hover:from-emerald-300 hover:to-teal-500"
+            } ${tone === "rose" ? "hover:shadow-[0_0_30px_-6px_rgba(244,63,94,0.7)]" : "hover:shadow-[0_0_30px_-6px_rgba(16,185,129,0.6)]"}`}
+          >
+            {pending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {cta}…
+              </>
+            ) : (
+              <>
+                {tone === "rose" ? <Snowflake className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                {cta}
+              </>
+            )}
+          </button>
 
-      {!ready && reason && (
-        <p className="mt-2 text-[11px] leading-relaxed text-amber-200/80">{reason}</p>
+          {!ready && reason && (
+            <p className="mt-2 text-[11px] leading-relaxed text-amber-200/80">{reason}</p>
+          )}
+        </>
       )}
     </motion.div>
   );

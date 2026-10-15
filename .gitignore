@@ -56,5 +56,31 @@ instructions.txt
 blueprint.md
 AGENTS.md
 CLAUDE.md
+agents_recomendations.md
 scratch/
+
+# Logs & tool artifacts
+*.log
+devserver.log
+.playwright-mcp/
+.agents/
+
+# Secrets, private keys & credentials
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.keystore
+id_rsa*
+id_ed25519*
+secrets.*
+credentials.*
+
+# Backups & dumps
+*.bak
+*.swp
+*.save
+*.tmp
 

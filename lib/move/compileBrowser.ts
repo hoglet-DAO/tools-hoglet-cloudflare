@@ -22,6 +22,8 @@ export interface BrowserCompileResult {
   sizeBytes?: number;
   /** The service's note about a large package, passed through untouched. */
   hint?: string;
+  /** The service's note about the choices made, passed through untouched. */
+  note?: string;
   /**
    * True when this answer came from the local cache rather than the service.
    *
@@ -161,6 +163,7 @@ async function postToProxy(
     artifactsOmitted: json.artifactsOmitted === true,
     sizeBytes: json.sizeBytes,
     hint: json.hint,
+    note: json.note,
     ms: json.ms ?? 0,
     stdout: json.stdout ?? "",
     stderr: json.stderr ?? "",

@@ -1,6 +1,13 @@
-# Governance Factory: Universal Governance & Cryptographic Renounce Engine
+# Keyless Contract Vault: deploy keyless, delegate control, renounce forever
 
-A Move (Supra / Aptos) factory and governance hub for deploying, managing, upgrading, and permanently renouncing smart contracts for both **Autonomous Resource Accounts** and **Migrated EOAs** (via a per-EOA proxy Resource Account).
+A Move (Supra / Aptos) vault that deploys, governs, upgrades and permanently renounces smart contracts for both **Autonomous Resource Accounts** and **Migrated EOAs** (via a per-EOA proxy Resource Account).
+
+The admin it records is an **address, not a DAO**: whoever it is holds a single signing key over the contract. A multisig, timelock or DAO only decentralises control when that address actually *is* one — which is why the interface asks for an admin rather than promising collective governance.
+
+> **On-chain identity:** the published module is `dao_contracts_vault::vault` and it is frozen. All
+> live state (`ManagedContract`, `RenouncedRecord`, `FactoryCatalog`) is typed to that module, so
+> renaming it would orphan every existing deployment. "Keyless Contract Vault" is the product name
+> for the docs and the UI; the module keeps its name.
 
 ---
 

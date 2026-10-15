@@ -1,23 +1,26 @@
 "use client";
 
-import { Home, Code2, Search, Menu, X, Coins, ShieldCheck, KeyRound } from "lucide-react";
+import { Home, Code2, Search, Menu, X, Coins, ShieldCheck, KeyRound, Boxes } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
 export default function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
+  const t = useTranslations("Nav");
 
   const menuItems = [
-    { id: "home", href: "/", icon: Home, label: "Dashboard", color: "text-white" },
-    { id: "interactor", href: "/interactor", icon: Code2, label: "Interactor", color: "text-amm-pink" },
-    { id: "inspector", href: "/inspector", icon: Coins, label: "Asset Inspector", color: "text-cyan-400" },
-    // Governance and Account Control are separate entries because they do different things with
-    // different risk: one governs modules the factory owns, the other acts on an account the
-    // visitor owns, and only the second one can do something irreversible.
-    { id: "governance", href: "/governance", icon: ShieldCheck, label: "Contract Governance", color: "text-emerald-400" },
-    { id: "account-control", href: "/account-control", icon: KeyRound, label: "Account Control", color: "text-rose-400" },
+    { id: "home", href: "/", icon: Home, key: "navHome", color: "text-white" },
+    { id: "interactor", href: "/interactor", icon: Code2, key: "navInteractor", color: "text-amm-pink" },
+    { id: "inspector", href: "/inspector", icon: Coins, key: "navInspector", color: "text-cyan-400" },
+    // The vault is its own destination because it does a different thing with a different risk than
+    // Account Control: it governs modules the vault owns, and the actions it offers are irreversible
+    // in one path.
+    { id: "governance", href: "/governance", icon: ShieldCheck, key: "navVault", color: "text-emerald-400" },
+    { id: "my-contracts", href: "/my-contracts", icon: Boxes, key: "navMyContracts", color: "text-cyan-400" },
+    { id: "account-control", href: "/account-control", icon: KeyRound, key: "navAccountControl", color: "text-rose-400" },
   ];
 
   return (
@@ -64,7 +67,7 @@ export default function Sidebar() {
                       exit={{ opacity: 0, width: 0 }}
                       className="ml-4 font-bold whitespace-nowrap overflow-hidden text-gray-300 group-hover:text-white"
                     >
-                      {item.label}
+                      {t(item.key)}
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -72,7 +75,7 @@ export default function Sidebar() {
                 {/* Tooltip for collapsed state */}
                 {!isExpanded && (
                   <div className="absolute left-full ml-4 px-3 py-2 bg-zinc-900 border border-white/10 text-white text-sm font-bold rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 z-50 whitespace-nowrap">
-                    {item.label}
+                    {t(item.key)}
                   </div>
                 )}
               </Link>
@@ -94,7 +97,7 @@ export default function Sidebar() {
               }`}
             >
               <item.icon className={`w-5 h-5 ${isActive ? "scale-110" : ""}`} />
-              <span className="text-[10px] font-bold">{item.label}</span>
+              <span className="text-[10px] font-bold">{t(item.key)}</span>
             </Link>
           );
         })}

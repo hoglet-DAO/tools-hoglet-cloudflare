@@ -16,7 +16,7 @@ import { type GovernanceVerdict, type LifecycleStage } from "@/hooks/features/go
 import { Shell, StageHeader, StageNotice } from "./lifecycle/LifecycleShared";
 import { DeployForm } from "./lifecycle/DeployForm";
 import { DonateForm } from "./lifecycle/DonateForm";
-import { UpgradeForm, TransferAdminForm, RenounceForm } from "./lifecycle/GovernanceForms";
+import { UpgradeForm, GovernanceForm } from "./lifecycle/GovernanceForms";
 
 export type GovernanceMode = "contracts" | "accounts";
 
@@ -32,12 +32,41 @@ export function LifecycleRunner({
   wallet,
   rpcUrl,
   onAudit,
+  hideUpgrade = false,
+  deployOnly = false,
+  collapseUpgrade = false,
 }: {
   mode: GovernanceMode;
   verdict: GovernanceVerdict | null;
   wallet: string;
   rpcUrl: string;
   onAudit: () => void;
+  /**
+   * Drop the upgrade form, keeping only the handover/renounce card.
+   *
+   * The upgrade form embeds the Move workspace, whose file tree is the visitor's *local* draft
+   * (localStorage), not the deployed contract's on-chain source. On a picker surface whose purpose
+   * is "choose a contract and renounce it", that editor is noise at best and a source of confusion
+   * at worst — so this surface hides it and keeps the irreversible actions reachable.
+   */
+  hideUpgrade?: boolean;
+  /**
+   * Always render the deploy form, whatever the audited subject says.
+   *
+   * The deploy flow derives its own target from `(creator, label)` and asks the factory whether that
+   * address is taken, so it never needed a verdict. Keeping it on a stage machine meant the page
+   * advertised "who controls this address" and then mostly ignored the answer — the audit bar served
+   * the actions, not the deploy. Rendering the deploy form directly makes the page say one thing:
+   * this is where you deploy.
+   */
+  deployOnly?: boolean;
+  /**
+   * Start the upgrade form collapsed behind a button.
+   *
+   * Used where the upgrade form is a secondary action on a contract that already exists, so its
+   * embedded workspace (a local draft) is not the first thing shown for a contract being managed.
+   */
+  collapseUpgrade?: boolean;
 }) {
   const t = useTranslations("Governance");
   const { execute, isPending } = useGovernanceActions();
@@ -76,6 +105,22 @@ export function LifecycleRunner({
         </p>
       )}
 
+      {deployOnly && mode === "contracts" ? (
+        <div className="space-y-5">
+          <StageHeader
+            icon={Rocket}
+            title={t("stage_unmanaged")}
+            body={t("runnerUnmanagedBody")}
+            tone="text-gray-300"
+          />
+          <DeployForm
+            t={t}
+            isPending={isPending("deploy_autonomous_contract") || isPending("upgrade_contract")}
+            run={run}
+          />
+        </div>
+      ) : (
+        <>
       {stage === "unmanaged" && (
         <div className="space-y-5">
           <StageHeader
@@ -152,16 +197,37 @@ export function LifecycleRunner({
               body={t("runnerGovernedBody")}
               tone="text-cyan-300"
             />
-            <UpgradeForm
+            {!hideUpgrade &&
+              (collapseUpgrade ? (
+                <UpgradeReveal>
+                  <UpgradeForm
+                    t={t}
+                    isPending={isPending("upgrade_contract")}
+                    run={run}
+                    contract={verdict!.subject}
+                    isEoa={verdict!.isEoa}
+                    wallet={wallet}
+                  />
+                </UpgradeReveal>
+              ) : (
+                <UpgradeForm
+                  t={t}
+                  isPending={isPending("upgrade_contract")}
+                  run={run}
+                  contract={verdict!.subject}
+                  isEoa={verdict!.isEoa}
+                  wallet={wallet}
+                />
+              ))}
+            <GovernanceForm
               t={t}
-              isPending={isPending("upgrade_contract")}
+              pendingTransfer={isPending("transfer_admin")}
+              pendingRenounce={isPending("renounce_contract")}
               run={run}
               contract={verdict!.subject}
-              isEoa={verdict!.isEoa}
+              admin={verdict!.admin}
               wallet={wallet}
             />
-            <TransferAdminForm t={t} isPending={isPending("transfer_admin")} run={run} contract={verdict!.subject} />
-            <RenounceForm t={t} isPending={isPending("renounce_contract")} run={run} contract={verdict!.subject} />
           </div>
         ) : (
           <StageNotice icon={ArrowUpCircle} title={t("stage_governed")} body={t("runnerAccountGovernedBody")} />
@@ -170,7 +236,36 @@ export function LifecycleRunner({
       {stage === "frozen" && (
         <StageNotice icon={Lock} title={t("stage_frozen")} body={t("runnerFrozenBody")} tone="text-emerald-300" />
       )}
+        </>
+      )}
     </Shell>
+  );
+}
+
+/**
+ * Keeps an upgrade form out of the way until it is asked for.
+ *
+ * The upgrade form's first screen is the Move workspace, and its file tree is the visitor's local
+ * draft rather than anything about the deployed contract. On a surface whose job is managing a
+ * contract that already exists, opening on that editor answered a question nobody asked — and the
+ * draft's package name has no relation to the contract being managed, which read as if it did.
+ */
+function UpgradeReveal({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Governance");
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {!open && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs font-bold text-gray-200 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-emerald-300/50"
+        >
+          {t("upgradeReveal")}
+        </button>
+      )}
+      {open && children}
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Code2, Search, Zap, Blocks, Coins, ShieldCheck, KeyRound, TriangleAlert } from "lucide-react";
+import { ArrowRight, Code2, Search, Zap, Blocks, Boxes, Coins, ShieldCheck, KeyRound, TriangleAlert } from "lucide-react";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { useRouter } from "@/i18n/navigation";
 
@@ -83,7 +83,7 @@ export default function BentoHome() {
           </div>
         </motion.div>
 
-        {/* Contract Governance Card — the factory owns these modules, a DAO admin decides. */}
+        {/* Keyless Contract Vault card — the vault owns these modules, a chosen admin decides. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -97,12 +97,12 @@ export default function BentoHome() {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-emerald-500/20">
               <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Contract Governance</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Keyless Contract Vault</h2>
             <p className="text-sm sm:text-base text-gray-400 font-medium">
-              Deploy a module with no key, give it an owner, upgrade it, or seal it forever.
+              Deploy a module with no key, hand control to any address, or renounce it forever.
             </p>
             <div className="flex flex-wrap gap-2 mt-4">
-              {["Keyless Deploy", "Upgrades", "Immutable Seal"].map((tag) => (
+              {["Keyless Deploy", "Delegate", "Renounce"].map((tag) => (
                 <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
                   {tag}
                 </span>
@@ -117,9 +117,51 @@ export default function BentoHome() {
           </div>
         </motion.div>
 
+        {/*
+          My contracts.
+
+          Without this card the surface that renounces — the one irreversible action in the suite —
+          was reachable only from the sidebar, while every other destination had a card here. That
+          is the wrong way round: what can destroy something permanently should not be the entry
+          that is easiest to miss. Deploying is on the vault card above; this is everything you
+          already deployed.
+        */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.32 }}
+          onClick={() => router.push("/my-contracts")}
+          className="group relative rounded-3xl bg-zinc-900/40 border border-white/10 overflow-hidden cursor-pointer hover:border-cyan-500/50 transition-all duration-500 hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] flex flex-col justify-between"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+          <div className="p-6 sm:p-8 relative z-10">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-teal-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-cyan-500/20">
+              <Boxes className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">My Contracts</h2>
+            <p className="text-sm sm:text-base text-gray-400 font-medium">
+              Every module you deployed through the vault. Pick one to upgrade it, hand over control, or renounce it.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {["Upgrade", "Hand over", "Renounce"].map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-300 border border-cyan-500/25">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-8 relative z-10 flex justify-end">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-white transition-all duration-300 group-hover:scale-110">
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors" />
+            </div>
+          </div>
+        </motion.div>
+
         {/* Account Control Card — the visitor owns this one, and one action here cannot be undone.
-            Given its own card instead of a row inside Contract Governance: that page's whole
-            guarantee is "a DAO can still change this later", which does not hold for an account. */}
+            Given its own card instead of a row inside the vault: that page's whole guarantee is
+            "an admin can still change this later", which does not hold for an account. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -135,7 +177,7 @@ export default function BentoHome() {
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Account Control</h2>
             <p className="text-sm sm:text-base text-gray-400 font-medium">
-              Hand your account to a DAO, take the control back, or destroy the key for good.
+              Hand your account to an admin, take the control back, or destroy the key for good.
             </p>
             <p className="mt-4 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-300 border border-rose-500/25">
               <TriangleAlert className="w-3 h-3" />

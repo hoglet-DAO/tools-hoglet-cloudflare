@@ -31,6 +31,13 @@ export const COMPILE_TOKEN = process.env.MOVE_COMPILE_TOKEN || "";
 export const COMPILE_MAX_BODY_BYTES = 5 * 1024 * 1024;
 
 /**
+ * The service's documented ceiling on the artifacts it will hand back (8 MB). Used only to colour the live
+ * source-size estimate in the workspace, so a package visibly near it gets a nudge before a compile; the
+ * authoritative number is the `size_bytes` the service returns.
+ */
+export const MAX_PACKAGE_BYTES = 8 * 1024 * 1024;
+
+/**
  * The service answers `504` after **300 s**, so the client must wait longer than that or it aborts first
  * and replaces a real "this took too long" answer with a local timeout of our own making. The margin is
  * small on purpose: it exists to let the upstream 504 arrive, not to extend the wait.
@@ -101,6 +108,8 @@ interface RawCompileResponse {
   size_bytes?: number;
   /** The service's own note when the package is large or its metadata could be trimmed. */
   hint?: string;
+  /** A service note about the choices made — e.g. that `none` publishes without the source map. */
+  note?: string;
   ms?: number;
   stdout?: string;
   stderr?: string;
@@ -125,6 +134,8 @@ export interface CompileResponse {
   sizeBytes?: number;
   /** The service's own note about a large package, surfaced to the user as-is. */
   hint?: string;
+  /** The service's note about the choices made, surfaced as-is (e.g. `none` is not shown on explorers). */
+  note?: string;
   ms: number;
   stdout: string;
   stderr: string;
@@ -366,6 +377,7 @@ async function callService(
         artifactsOmitted: json.artifacts_omitted === true,
         sizeBytes: json.size_bytes,
         hint: json.hint,
+        note: json.note,
         ms: json.ms ?? 0,
         stdout: json.stdout ?? "",
         stderr: json.stderr ?? "",

@@ -27,6 +27,7 @@ import {
 import { useTranslations } from "next-intl";
 import { compileInBrowser, testInBrowser } from "@/lib/move/compileBrowser";
 import type { IncludedArtifacts } from "@/lib/move/compileService";
+import { buildContractGuide } from "@/lib/move/aiPrompt";
 import {
   addressNamesUsedByModules,
   buildMoveToml,
@@ -49,6 +50,7 @@ import {
   renamePackageInSource,
   renamePackageInToml,
   saveProject,
+  sourceSizeBytes,
   starterModule,
   STARTER_VARIANTS,
   type ProjectSummary,
@@ -69,6 +71,7 @@ import { WorkspaceIdentity } from "./workspace/WorkspaceIdentity";
 import { WorkspaceFileTree } from "./workspace/WorkspaceFileTree";
 import { WorkspaceActions } from "./workspace/WorkspaceActions";
 import { WorkspaceDiagnostics } from "./workspace/WorkspaceDiagnostics";
+import { WorkspaceArtifacts, type CompiledModuleBytes } from "./workspace/WorkspaceArtifacts";
 
 /**
  * The authoring half of a deploy: a small file tree plus a compile step.
@@ -173,7 +176,17 @@ export function MoveWorkspace({
   const [includedArtifacts, setIncludedArtifacts] = useState<IncludedArtifacts | "">("");
   const [overrideSizeCheck, setOverrideSizeCheck] = useState(false);
   const [testResult, setTestResult] = useState<TestSummary | null>(null);
-  const [result, setResult] = useState<{ ok: boolean; modules: string[]; ms: number; cached: boolean } | null>(null);
+  const [result, setResult] = useState<{
+    ok: boolean;
+    modules: string[];
+    ms: number;
+    cached: boolean;
+    sizeBytes?: number;
+    /** `0x`-prefixed hex of `package-metadata.bcs`, or null when the service omitted it. */
+    metadataHex?: string | null;
+    /** Per-module compiled bytecode, in the same order as `modules` — shown in the artifacts panel. */
+    bytecode?: CompiledModuleBytes[];
+  } | null>(null);
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
   /**
@@ -183,7 +196,14 @@ export function MoveWorkspace({
    * error box — that made a working import read as a broken one. It shows as a quiet note instead.
    */
   const [notice, setNotice] = useState<string | null>(null);
+  /**
+   * Whether the last compile returned a note the user can act on — a package too large to hand over, where
+   * retrying smaller or past the cap is the fix. Drives the retry buttons under the note.
+   */
+  const [serviceRetry, setServiceRetry] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** Set while the AI prompt is on the clipboard, so its button can say so. */
+  const [copiedAi, setCopiedAi] = useState(false);
   /** Autosave outcome, so a failure is visible instead of silent. */
   const [saveState, setSaveState] = useState<"idle" | "saved" | SaveFailureReason>("idle");
   const loaded = useRef<string | null>(null);
@@ -208,20 +228,34 @@ export function MoveWorkspace({
   /**
    * Whether the workspace itself supplied the deploy artifacts.
    *
-   * It does not, today: the compile service returns ModuleIDs rather than bytecode, so the bytecode is
-   * supplied by the manual upload instead. Calling `onArtifacts(null)` unconditionally on every edit and
-   * on every compile wiped that upload — so compiling, or touching a file after uploading, silently
-   * cleared the form and the deploy button could never become enabled.
-   *
-   * Once the service returns artifacts this flips to true and the invalidation starts doing its job:
-   * editing a source must invalidate the bytes compiled from it.
+   * The compile service returns the bytecode, so a successful compile hands those bytes to the deploy
+   * form and flips this to true. From then on any edit that invalidates the compiled package must also
+   * drop those bytes, or a stale package would deploy silently — which is what `invalidateOwnArtifacts`
+   * guards. A manual upload leaves this false, so the same edits never wipe artifacts the workspace did
+   * not put there.
    */
   const suppliedArtifacts = useRef(false);
 
+  /**
+   * `onArtifacts` behind a ref, so this callback's identity never depends on the parent.
+   *
+   * Both callers pass an inline arrow, which is a new function on every parent render. Keying
+   * `invalidateOwnArtifacts` on `onArtifacts` directly therefore handed the load effect below a new
+   * dependency each render: the effect re-ran on every render, and every callback that touched it
+   * (`invalidateOwnArtifacts`, `update`, `handleNameChange`, …) was rebuilt too. The `loaded.current`
+   * ref guard stops that from becoming a state loop, but only because it happens to run first — a
+   * fragile way to break a cycle. Reading the latest prop from a ref makes the identity stable by
+   * construction, so the effect only re-runs when the project actually changes.
+   */
+  const onArtifactsRef = useRef(onArtifacts);
+  useEffect(() => {
+    onArtifactsRef.current = onArtifacts;
+  }, [onArtifacts]);
+
   /** Clears the artifacts only when this workspace is what put them there. */
   const invalidateOwnArtifacts = useCallback(() => {
-    if (suppliedArtifacts.current) onArtifacts(null);
-  }, [onArtifacts]);
+    if (suppliedArtifacts.current) onArtifactsRef.current(null);
+  }, []);
 
   /**
    * Creates a project and returns it, so the caller can put it at the head of the list.
@@ -282,6 +316,7 @@ export function MoveWorkspace({
     setOutput("");
     setError(null);
     setNotice(null);
+    setServiceRetry(false);
     // Probed up front so the warning appears before anything is typed. Waiting for the first autosave to
     // fail would tell the user only after they had work worth losing.
     setSaveState(canPersist() ? "idle" : "blocked");
@@ -359,6 +394,9 @@ export function MoveWorkspace({
     () => ({ name, address: target, modules, tomlOverride, updatedAt: 0 }),
     [name, modules, target, tomlOverride]
   );
+
+  /** Live, comment-stripped source size — a proxy for the package the compile will build. */
+  const sourceBytes = useMemo(() => sourceSizeBytes(project), [project]);
 
   /**
    * The explorer page for the deployment target.
@@ -485,6 +523,7 @@ export function MoveWorkspace({
     async (picked: FileList | null, source: "folder" | "files") => {
       setError(null);
       setNotice(null);
+      setServiceRetry(false);
       /*
         The previous project's compile and test badges are dropped before anything else.
 
@@ -687,19 +726,24 @@ export function MoveWorkspace({
       setOutput("");
       setError(null);
       setNotice(null);
+      setServiceRetry(false);
       setSaveState(canPersist() ? "idle" : "blocked");
       invalidateOwnArtifacts();
     },
     [name, invalidateOwnArtifacts]
   );
 
-  const handleCompile = useCallback(async () => {
+  const handleCompile = useCallback(
+    async (overrides?: { includedArtifacts?: IncludedArtifacts | ""; overrideSizeCheck?: boolean }) => {
+    const ia = overrides?.includedArtifacts ?? includedArtifacts;
+    const osc = overrides?.overrideSizeCheck ?? overrideSizeCheck;
     setError(null);
     setCompiling(true);
     setOutput("");
+    setServiceRetry(false);
     const res = await compileInBrowser(projectToFiles({ ...project, modules }), {
-      includedArtifacts: includedArtifacts || undefined,
-      overrideSizeCheck,
+      includedArtifacts: ia || undefined,
+      overrideSizeCheck: osc,
     });
     setCompiling(false);
     const combined = stripAnsi(`${res.stdout}\n${res.stderr}`).trim();
@@ -711,7 +755,19 @@ export function MoveWorkspace({
       return;
     }
 
-    setResult({ ok: true, modules: res.modules, ms: res.ms, cached: res.cached });
+    setResult({
+      ok: true,
+      modules: res.modules,
+      ms: res.ms,
+      cached: res.cached,
+      sizeBytes: res.sizeBytes,
+      metadataHex: res.metadata,
+      bytecode: res.bytecode.map((hex, i) => ({
+        name: moduleLabel(res.modules[i], i),
+        hex,
+        bytes: hex.startsWith("0x") ? (hex.length - 2) / 2 : hex.length / 2,
+      })),
+    });
 
     /**
      * Hand over the bytes, so deploying is a click rather than a file hunt.
@@ -740,10 +796,37 @@ export function MoveWorkspace({
       if (res.artifactsOmitted) setError(t("workspaceArtifactsOmitted"));
     }
 
-    // The service's own note about a large package, shown verbatim: it knows the size it built and what to
-    // do about it, and paraphrasing it here would only drift from it.
-    setNotice(res.hint ?? null);
+    // The service's own note about the package or the choices made, shown verbatim: it knows the size it
+    // built and what to do about it, and paraphrasing it here would only drift from it.
+    const noteText = res.note ?? res.hint ?? null;
+    setNotice(noteText);
+    // A note about a package too large to hand over is actionable: the retry buttons under it apply the
+    // service's own recommendation without sending the user into the advanced panel.
+    setServiceRetry(res.artifactsOmitted || (!!noteText && /large/i.test(noteText)));
   }, [project, modules, t, invalidateOwnArtifacts, onArtifacts, includedArtifacts, overrideSizeCheck]);
+
+  /** Retry the compile with the service's recommendation, from the note, without opening Advanced. */
+  const retryWithNone = useCallback(() => {
+    setIncludedArtifacts("none");
+    void handleCompile({ includedArtifacts: "none" });
+  }, [handleCompile]);
+
+  const retryWithOverride = useCallback(() => {
+    setOverrideSizeCheck(true);
+    void handleCompile({ overrideSizeCheck: true });
+  }, [handleCompile]);
+
+  /**
+   * Copies the AI prompt, with this package's name and its target already filled in.
+   *
+   * The address is the part a model cannot guess — it is derived from the wallet and the name — so it goes
+   * into the prompt rather than being left for the model to invent.
+   */
+  const handleCopyAiPrompt = useCallback(() => {
+    navigator.clipboard.writeText(buildContractGuide(name, target));
+    setCopiedAi(true);
+    setTimeout(() => setCopiedAi(false), 2000);
+  }, [name, target]);
 
   // Split by origin: the framework's own diagnostics are noise the service documents as such, while the
   // user's own are the only ones worth placing next to their code.
@@ -867,6 +950,7 @@ export function MoveWorkspace({
         modulesLength={modules.length}
         result={result}
         testResult={testResult}
+        sourceBytes={sourceBytes}
         onCompile={handleCompile}
         onTest={handleTest}
         onImport={handleImport}
@@ -876,7 +960,14 @@ export function MoveWorkspace({
         onIncludedArtifactsChange={setIncludedArtifacts}
         overrideSizeCheck={overrideSizeCheck}
         onOverrideSizeCheckChange={setOverrideSizeCheck}
+        onCopyAiPrompt={handleCopyAiPrompt}
+        copiedAi={copiedAi}
       />
+
+      {/* Compiled bytecode, per module — the exact payload publish sends on-chain */}
+      {result?.ok && result.bytecode && result.bytecode.length > 0 && (
+        <WorkspaceArtifacts t={t} modules={result.bytecode} metadataHex={result.metadataHex} />
+      )}
 
       {/* Diagnostics and output */}
       <WorkspaceDiagnostics
@@ -887,6 +978,11 @@ export function MoveWorkspace({
         error={error}
         notice={notice}
         saveState={saveState}
+        serviceRetry={serviceRetry}
+        showRetryNone={includedArtifacts !== "none"}
+        showRetryOverride={!overrideSizeCheck}
+        onRetryNone={retryWithNone}
+        onRetryOverride={retryWithOverride}
         onSelectModule={(path) => {
           const i = modules.findIndex((m) => m.path === path);
           if (i >= 0) setEditing({ kind: "module", index: i });

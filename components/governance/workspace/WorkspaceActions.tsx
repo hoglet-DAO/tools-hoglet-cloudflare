@@ -9,10 +9,12 @@ import {
   Check,
   AlertTriangle,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { STARTER_VARIANTS, type StarterVariant } from "@/lib/move/project";
 import type { TestSummary } from "@/lib/move/diagnostics";
-import type { IncludedArtifacts } from "@/lib/move/compileService";
+import { MAX_PACKAGE_BYTES, type IncludedArtifacts } from "@/lib/move/compileService";
+import { formatBytes } from "@/lib/governance/buildArtifacts";
 
 export function WorkspaceActions({
   t,
@@ -22,6 +24,7 @@ export function WorkspaceActions({
   modulesLength,
   result,
   testResult,
+  sourceBytes,
   onCompile,
   onTest,
   onImport,
@@ -31,14 +34,18 @@ export function WorkspaceActions({
   onIncludedArtifactsChange,
   overrideSizeCheck,
   onOverrideSizeCheckChange,
+  onCopyAiPrompt,
+  copiedAi,
 }: {
   t: any;
   compiling: boolean;
   testing: boolean;
   nameOk: boolean;
   modulesLength: number;
-  result: { ok: boolean; modules: string[]; ms: number; cached: boolean } | null;
+  result: { ok: boolean; modules: string[]; ms: number; cached: boolean; sizeBytes?: number } | null;
   testResult: TestSummary | null;
+  /** Comment-stripped source size, a live proxy for the package the compile will build. */
+  sourceBytes: number;
   onCompile: () => void;
   onTest: () => void;
   onImport: (files: FileList | null, kind: "folder" | "files") => void;
@@ -48,16 +55,26 @@ export function WorkspaceActions({
   onIncludedArtifactsChange: (value: IncludedArtifacts | "") => void;
   overrideSizeCheck: boolean;
   onOverrideSizeCheckChange: (value: boolean) => void;
+  onCopyAiPrompt: () => void;
+  copiedAi: boolean;
 }) {
   const importInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // The compiled size the service reported is authoritative; the source estimate stands in until a compile.
+  const compiledSize = result?.ok && typeof result.sizeBytes === "number" ? result.sizeBytes : null;
+  const shownSize = compiledSize ?? sourceBytes;
+  const overSize = shownSize > MAX_PACKAGE_BYTES;
+  const sizeCls = overSize
+    ? "border-amber-400/30 bg-amber-500/10 text-amber-300"
+    : "border-white/10 bg-white/[0.03] text-gray-500";
 
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-2">
       <button
         type="button"
-        onClick={onCompile}
+        onClick={() => onCompile()}
         disabled={compiling || !nameOk || modulesLength === 0}
         className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-600 px-4 py-2 text-xs font-bold text-white transition-all hover:from-emerald-300 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-300/50"
       >
@@ -73,6 +90,20 @@ export function WorkspaceActions({
       >
         {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
         {testing ? t("workspaceTesting") : t("workspaceTest")}
+      </button>
+
+      {/*
+        The prompt carries the package name and the exact address the contract must be published to, both of
+        which are derived here and cannot be guessed by a model — that is the part of the flow it gets wrong.
+      */}
+      <button
+        type="button"
+        onClick={onCopyAiPrompt}
+        title={t("workspaceCopyAiPromptHint")}
+        className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3.5 py-2 text-xs font-bold text-cyan-200 transition-colors hover:bg-cyan-400/20 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
+      >
+        {copiedAi ? <Check className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+        {copiedAi ? t("workspaceCopied") : t("workspaceCopyAiPrompt")}
       </button>
 
       <button
@@ -140,6 +171,20 @@ export function WorkspaceActions({
         </span>
       )}
 
+      {/*
+        A live size readout. It is the comment-stripped source, not the compiled artifact — the exact size
+        only comes back from the service — but it tracks the part that grows with the code, so a package
+        visibly near the cap is flagged before a compile rather than after one.
+      */}
+      <span
+        title={t("workspaceCodeSizeHint", { max: formatBytes(MAX_PACKAGE_BYTES) })}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${sizeCls}`}
+      >
+        {compiledSize != null
+          ? t("workspacePackageSize", { size: formatBytes(shownSize) })
+          : t("workspaceCodeSize", { size: formatBytes(shownSize) })}
+      </span>
+
       <div className="ml-auto flex items-center gap-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
           {t("workspaceNewProject")}
@@ -160,8 +205,9 @@ export function WorkspaceActions({
 
       {/*
         Advanced, collapsed, off the main path. These steer what the compile service builds and returns, which
-        only matters for a package big enough to bump the size cap — so the defaults (smallest metadata,
-        override on) are what most packages want, and the controls stay out of the way.
+        only matters for a package big enough to bump the size cap — so the defaults are "send nothing", the
+        normal compile, and the controls stay out of the way. `none` trades the explorer's source view for a
+        smaller transaction, which is worth saying out loud the moment it is picked.
       */}
       <details className="group mt-2">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-600 transition-colors hover:text-gray-400 focus-visible:outline-none">
@@ -194,6 +240,10 @@ export function WorkspaceActions({
             />
             {t("workspaceOverrideSizeCheck")}
           </label>
+
+          {includedArtifacts === "none" && (
+            <p className="w-full text-[10px] leading-relaxed text-amber-200/80">{t("workspaceNoneNotShown")}</p>
+          )}
         </div>
         <p className="mt-1.5 text-[10px] leading-relaxed text-gray-600">{t("workspaceAdvancedHint")}</p>
       </details>

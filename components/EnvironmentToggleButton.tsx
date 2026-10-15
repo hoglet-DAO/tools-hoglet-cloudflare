@@ -23,15 +23,17 @@ const NetworkSwitchButton: React.FC<NetworkSwitchButtonProps> = ({ fullWidth = f
   const t = useTranslations('Dashboard');
   const { network, setNetwork } = useNetwork();
 
+  const holdCompletedRef = useRef(false);
+
   useEffect(() => {
-    // Limpia el frame de animación anterior si existe al cambiar isPressing
     if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null;
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
     }
 
     if (isPressing) {
       let startTime: number | null = null;
+      holdCompletedRef.current = false;
 
       const animate = (timestamp: number) => {
         if (!startTime) startTime = timestamp;
@@ -40,67 +42,57 @@ const NetworkSwitchButton: React.FC<NetworkSwitchButtonProps> = ({ fullWidth = f
         setProgress(newProgress);
 
         if (elapsed < holdTime) {
-          // Solo continúa si todavía se está presionando
-          if (isPressing) {
-              animationFrameId.current = requestAnimationFrame(animate);
-          } else {
-              // Si se soltó antes de tiempo, resetea
-              setProgress(0);
-          }
+          animationFrameId.current = requestAnimationFrame(animate);
         } else {
-          // Hold completado
-          console.log("Hold completed! Switching network to:", network === 'supra-testnet' ? 'supra-mainnet' : 'supra-testnet');
-          setIsPressing(false); // Deja de presionar (estado)
-          setProgress(0); // Resetea el progreso visual
+          // Hold completado con éxito
+          holdCompletedRef.current = true;
+          setIsPressing(false);
+          setProgress(0);
 
-          // Lógica de cambio de red
           const newNetwork = network === 'supra-testnet' ? 'supra-mainnet' : 'supra-testnet';
-          setNetwork(newNetwork); // Actualiza el contexto, el cual ya actualiza la URL
+          console.log("Hold completed! Switching network to:", newNetwork);
+          setNetwork(newNetwork);
         }
       };
-      // Inicia la animación
-      animationFrameId.current = requestAnimationFrame(animate);
 
+      animationFrameId.current = requestAnimationFrame(animate);
     } else {
-      // Si se dejó de presionar (isPressing es false), resetea el progreso
       setProgress(0);
     }
 
-    // Función de limpieza del efecto
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
         animationFrameId.current = null;
       }
     };
-  }, [isPressing, network, setNetwork, pathname, router, holdTime]); 
+  }, [isPressing, network, setNetwork, holdTime]);
 
-  const startPress = (e: React.MouseEvent | React.TouchEvent) => {
-    // No usamos preventDefault aqui porque rompe el evento touch/hold en moviles
+  const startPress = () => {
+    holdCompletedRef.current = false;
     pressStartTime.current = Date.now();
     setIsPressing(true);
   };
 
-  const endPress = (e: React.MouseEvent | React.TouchEvent) => {
-    // Solo procesa si realmente se estaba presionando (evita endPress sin startPress)
-    if (!isPressing) return;
+  const endPress = () => {
+    if (!isPressing && !holdCompletedRef.current) return;
 
     const pressDuration = pressStartTime.current ? Date.now() - pressStartTime.current : 0;
-    const wasHoldCompleted = progress >= 100; // Verifica si el hold se completó
+    const wasHoldCompleted = holdCompletedRef.current;
 
-    setIsPressing(false); // Importante: actualiza el estado ANTES de la lógica de navegación
-    // El useEffect se encargará de limpiar la animación y resetear el progreso
+    setIsPressing(false);
+    setProgress(0);
 
-    // Si NO se completó el hold Y fue un click corto Y no estamos ya en la home
-    if (!wasHoldCompleted && pressDuration < clickThreshold && pathname !== '/') {
-        // *** INICIO DE LA CORRECCIÓN ***
-        // Determina la URL de destino para la navegación a la home
-        const targetPath = network === 'supra-testnet' ? '/?network=supra-testnet' : '/';
-        router.push(targetPath);
-        // *** FIN DE LA CORRECCIÓN ***
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
     }
-    // Si se completó el hold, la lógica ya se ejecutó en el useEffect.
-    // Si fue un press largo pero no completado, simplemente se resetea el progreso por el cambio de isPressing.
+
+    // Si fue un click corto ordinario (sin haber hecho hold) y no estamos ya en la home, navegar a home
+    if (!wasHoldCompleted && pressDuration < clickThreshold && pathname !== '/') {
+      const targetPath = network === 'supra-testnet' ? '/?network=supra-testnet' : '/';
+      router.push(targetPath);
+    }
   };
 
   const targetNetworkName = network === 'supra-testnet' ? 'supra-mainnet' : 'supra-testnet';

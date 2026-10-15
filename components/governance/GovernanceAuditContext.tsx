@@ -39,8 +39,15 @@ interface AuditContextValue {
   /** Pure views, exposed so a form can resolve its own target address without opening the predictor. */
   predictResourceAccount: (rpcUrl: string, creator: string, label: string) => Promise<string | undefined>;
   predictEoaProxy: (rpcUrl: string, eoa: string) => Promise<string | undefined>;
-  /** Whether the factory already holds a record for an address. */
+  /** Whether the factory already holds a record for this address. */
   isFactoryManaged: (rpcUrl: string, addr: string) => Promise<boolean>;
+  /** Audits one specific address, e.g. one picked from the creator's own deployments. */
+  auditAddress: (address: string) => void;
+  /** The addresses this creator deployed through the factory, for the contract picker. */
+  listCreatorContracts: (
+    rpcUrl: string,
+    creator: string
+  ) => Promise<import("@/hooks/features/governance/useGovernanceAudit").DeployedContract[]>;
   copied: string | null;
   handleCopy: (value: string) => void;
 }
@@ -49,7 +56,7 @@ const AuditContext = createContext<AuditContextValue | null>(null);
 
 export function GovernanceAuditProvider({ children }: { children: React.ReactNode }) {
   const { rpcUrl, accounts, connect } = useSupraWallet();
-  const { verdict, isAuditing, error, audit, predictResourceAccount, predictEoaProxy, isFactoryManaged } =
+  const { verdict, isAuditing, error, audit, predictResourceAccount, predictEoaProxy, isFactoryManaged, listCreatorContracts } =
     useGovernanceAudit();
 
   const [target, setTarget] = useState("");
@@ -106,12 +113,15 @@ export function GovernanceAuditProvider({ children }: { children: React.ReactNod
       isFactoryManaged,
       copied,
       handleCopy,
+      auditAddress: auditSubject,
+      listCreatorContracts,
     }),
     [
       verdict,
       isAuditing,
       error,
       handleAudit,
+      auditSubject,
       subject,
       target,
       wallet,
@@ -122,6 +132,7 @@ export function GovernanceAuditProvider({ children }: { children: React.ReactNod
       isFactoryManaged,
       copied,
       handleCopy,
+      listCreatorContracts,
     ]
   );
 

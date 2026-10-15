@@ -7,7 +7,7 @@ import {
   GovernanceAuditProvider,
   useGovernanceAuditContext,
 } from "@/components/governance/GovernanceAuditContext";
-import { GovernanceAuditPanel } from "@/components/governance/GovernanceAuditPanel";
+import { GovernanceAuditPanel, FlowPanel } from "@/components/governance/GovernanceAuditPanel";
 import { LifecycleRunner, type GovernanceMode } from "@/components/governance/LifecycleRunner";
 import { DAO_CONTRACTS_VAULT } from "@/config/contracts";
 
@@ -59,10 +59,36 @@ function GovernanceShell({ mode }: { mode: GovernanceMode }) {
         </div>
       )}
 
-      <GovernanceAuditPanel mode={mode} />
+      {mode === "contracts" ? (
+        <>
+          {/*
+            No audit bar on this surface.
 
-      {/* The write half */}
-      <LifecycleRunner mode={mode} verdict={verdict} wallet={wallet} rpcUrl={rpcUrl} onAudit={audit} />
+            Three jobs, three surfaces, so none of them has to do two things. This page *deploys*. Your
+            own contracts are picked and managed on "My contracts". Any contract you happen to be
+            looking at in the Interactor carries its own governance check. What was left here was a
+            fourth way to reach the same verdict, and it was the one that cost the most to use —
+            pasting a 64-character address to find out something the other two already answer.
+          */}
+          <LifecycleRunner
+            mode={mode}
+            verdict={verdict}
+            wallet={wallet}
+            rpcUrl={rpcUrl}
+            onAudit={audit}
+            deployOnly
+          />
+          <FlowPanel mode={mode} />
+        </>
+      ) : (
+        <>
+          <GovernanceAuditPanel mode={mode} />
+
+          {/* The write half. Account actions are the only ones bound to an audited subject, so this
+              surface keeps the audit bar that establishes it. */}
+          <LifecycleRunner mode={mode} verdict={verdict} wallet={wallet} rpcUrl={rpcUrl} onAudit={audit} />
+        </>
+      )}
 
       {/*
         The lifecycle entries reference and the glossary are intentionally not rendered here.

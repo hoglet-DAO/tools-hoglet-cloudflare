@@ -45,7 +45,6 @@ export function GovernanceAuditPanel({ mode }: { mode: GovernanceMode }) {
     target,
     setTarget,
     wallet,
-    rpcUrl,
     connect,
     copied,
     handleCopy,
@@ -95,6 +94,14 @@ export function GovernanceAuditPanel({ mode }: { mode: GovernanceMode }) {
                 className="w-full bg-transparent pl-11 pr-4 py-3 text-sm font-mono text-white placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 rounded-xl"
               />
             </div>
+
+            {/*
+              A "Your contracts" dropdown used to sit here. Removed: the dedicated "My contracts" page
+              now does this job as a first-class, discoverable destination with per-contract state, so
+              this was a second way to reach the same thing hidden inside a command bar — and it read
+              as part of the address field rather than as navigation.
+            */}
+
             <button
               type="button"
               onClick={audit}
@@ -183,7 +190,7 @@ export function GovernanceAuditPanel({ mode }: { mode: GovernanceMode }) {
  * the handover revocable. So the space now carries the flow, and the address appears where it is used
  * rather than behind a control.
  */
-function FlowPanel({ mode }: { mode: GovernanceMode }) {
+export function FlowPanel({ mode }: { mode: GovernanceMode }) {
   const t = useTranslations("Governance");
   const { subject, rpcUrl, predictEoaProxy, handleCopy } = useGovernanceAuditContext();
   const [proxy, setProxy] = useState("");

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
+import { ContractGovernanceModal } from "@/components/wizard/ContractGovernanceModal";
 
 interface ModuleNavigationProps {
   modules: any[];
@@ -68,44 +69,51 @@ export function ModuleNavigation({
           </div>
         </div>
 
+{/*
+          The AuthKey badge is the trigger for the governance modal.
+
+          It used to carry its own hover-tooltip explaining the AuthKey state. That explanation, plus
+          the AuthKey value, now lives in the modal — which also asks the factory the question the
+          tooltip could only hedge about ("it MAY be permanently renounced, OR ..."). One control, one
+          place to read it, and the badge keeps its at-a-glance meaning.
+        */}
         {authKey && (
-          <div className="ml-auto group relative flex items-center cursor-help">
-            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
-              isResourceAccount 
-                ? "bg-blue-500/20 text-blue-400 border-blue-500/30" 
-                : isExternalAdmin 
-                  ? "bg-purple-500/20 text-purple-400 border-purple-500/30"
-                  : "bg-amber-500/20 text-amber-400 border-amber-500/30"
-            }`}>
-              {isResourceAccount ? (
-                <>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                  Resource Account
-                </>
-              ) : isExternalAdmin ? (
-                <>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                  Admin Rotated
-                </>
-              ) : (
-                <>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  Upgradeable
-                </>
-              )}
-            </span>
-            <div className="absolute right-0 bottom-full mb-2 w-64 p-3 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl text-xs text-gray-300 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              {isResourceAccount 
-                ? "This account has no direct private key (AuthKey is 0x0). It may be permanently renounced, OR it could be a Resource Account controlled by a SignerCapability stored in another contract (like a multisig)." 
-                : isExternalAdmin 
-                  ? "This contract's authentication key has been rotated to another address. Upgrades are controlled by an external admin or multisig."
-                  : "This contract has an active authentication key, meaning the deployer can still upgrade these modules or sign transactions."}
-              <div className="mt-2 text-[10px] text-gray-500 break-all font-mono">Auth Key: {authKey}</div>
-            </div>
-          </div>
+          <ContractGovernanceModal
+            contractAddress={contractAddress}
+            authKey={authKey}
+            trigger={
+              <button
+                type="button"
+                className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-cyan-300/50 ${
+                  isResourceAccount
+                    ? "border-blue-500/30 bg-blue-500/20 text-blue-400"
+                    : isExternalAdmin
+                      ? "border-purple-500/30 bg-purple-500/20 text-purple-400"
+                      : "border-amber-400/30 bg-amber-500/20 text-amber-400"
+                }`}
+              >
+                {isResourceAccount ? (
+                  <>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    Resource Account
+                  </>
+                ) : isExternalAdmin ? (
+                  <>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    Admin Rotated
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    Upgradeable
+                  </>
+                )}
+</button>
+            }
+          />
         )}
       </div>
-      
+
       <div className="flex items-center gap-2">
         <button
           onClick={handlePrev}
