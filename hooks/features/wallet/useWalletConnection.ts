@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { WalletType } from '@/utils/types';
-import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
-import { getStoredWalletType, setStoredWalletType, clearStoredWalletType } from '@/utils/supra/storage';
+import { WALLET_CONFIGS } from '@snabur/hoglet-frontend/supra';
+import { getStoredWalletType, setStoredWalletType, clearStoredWalletType } from '@snabur/hoglet-frontend/supra';
 import { useNetwork } from '@/context/NetworkContext';
 import { writeStored, removeStored, STORAGE_KEYS } from '@/lib/storage';
 import type { DappMetadata, WalletInfo, WalletBalanceRequest } from 'ribbit-wallet-connect';

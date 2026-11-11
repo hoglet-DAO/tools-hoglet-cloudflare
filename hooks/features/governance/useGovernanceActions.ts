@@ -17,7 +17,7 @@ import {
   ED25519_SCHEME,
 } from "@/lib/governance/offerChallenge";
 import { DAO_CONTRACTS_VAULT, VAULT_MODULE } from "@/config/contracts";
-import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
+import { ZERO_AUTH_KEY } from "@snabur/hoglet-frontend/supra";
 import { trace, traceWarn } from "@/lib/debug";
 
 /** The eight lifecycle entry points, with the module each one lives in. */

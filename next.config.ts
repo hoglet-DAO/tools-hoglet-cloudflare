@@ -9,6 +9,7 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@snabur/hoglet-frontend'],
   async redirects() {
     // Mirrors the `locales` list in i18n/routing.ts. Spelled out rather than imported: next.config is
     // evaluated outside the app's module graph, and pulling in next-intl here to read one array is a
@@ -76,9 +77,6 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'ipfs.hoglet.xyz' },
       { protocol: 'https', hostname: 'pub-051414983f2e4fb6bc4b908ff3bcb03c.r2.dev', pathname: '/**' },
     ],
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 };
 

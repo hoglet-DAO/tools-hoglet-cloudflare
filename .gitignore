@@ -84,3 +84,5 @@ credentials.*
 *.save
 *.tmp
 
+.npmrc
+*.tgz

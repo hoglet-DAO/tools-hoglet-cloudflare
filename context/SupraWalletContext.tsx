@@ -5,7 +5,7 @@ import { useWalletConnection } from '@/hooks/features/wallet/useWalletConnection
 import { useWalletAuth } from '@/hooks/features/wallet/useWalletAuth';
 import { useWalletTransactions } from '@/hooks/features/wallet/useWalletTransactions';
 import { WalletType, WalletCapabilities } from '@/utils/types';
-import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
+import { WALLET_CONFIGS } from '@snabur/hoglet-frontend/supra';
 import { useNetwork } from '@/context/NetworkContext'; // Import network context
 
 interface SupraWalletContextType {

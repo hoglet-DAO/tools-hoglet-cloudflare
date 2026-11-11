@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { WalletType } from '@/utils/types';
-import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
+import { WALLET_CONFIGS } from '@snabur/hoglet-frontend/supra';
 import { serializeTransactionArgs } from '@/utils/supra/abi';
 import { sendStarkeyTransaction } from '@/utils/supra/starkeyPayload';
 import { sendRibbitTransaction } from '@/utils/supra/ribbitPayload';

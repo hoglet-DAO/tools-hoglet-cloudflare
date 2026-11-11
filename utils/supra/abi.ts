@@ -1,5 +1,5 @@
 import { getStoredABI, type ModuleABI } from '@/lib/abiStorage';
-import { serializeArgsFromTypes } from './bcs';
+import { serializeArgsFromTypes } from '@snabur/hoglet-frontend/supra';
 import { trace, traceWarn } from "@/lib/debug";
 
 export const fetchModuleABI = async (

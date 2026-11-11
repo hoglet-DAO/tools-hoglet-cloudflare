@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import nacl from 'tweetnacl';
 import { WalletType } from '@/utils/types';
-import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
+import { WALLET_CONFIGS } from '@snabur/hoglet-frontend/supra';
 import { trace, traceWarn } from "@/lib/debug";
 import { isUSTimezone, hasUserSignedConsent } from '@/lib/compliance';
 
