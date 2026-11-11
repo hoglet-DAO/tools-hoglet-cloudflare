@@ -102,12 +102,21 @@ export function MoveEditor({
   onChange,
   path,
   className = "",
+  readOnly = false,
 }: {
   value: string;
   onChange: (next: string) => void;
   /** Used as the aria label so several editors in the tree are distinguishable. */
   path: string;
   className?: string;
+  /**
+   * Show the source without accepting edits.
+   *
+   * For the sample preview on the deploy page before a wallet is connected: projects are keyed by the
+   * creator, so anything typed in that state would be filed under "unbound" and silently replaced by the
+   * wallet's own project the moment it connects. Read-only shows what the tool is for without that trap.
+   */
+  readOnly?: boolean;
 }) {
   /**
    * One Dark's syntax colours on this editor's own dark surface.
@@ -134,6 +143,7 @@ export function MoveEditor({
         extensions={extensions}
         theme="none"
         height="100%"
+        editable={!readOnly}
         style={{ height: "100%", backgroundColor: "#0a0a0a" }}
         basicSetup={{
           lineNumbers: true,

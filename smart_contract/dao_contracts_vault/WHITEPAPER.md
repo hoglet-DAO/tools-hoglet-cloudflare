@@ -11,7 +11,7 @@ Decentralized applications (dApps) in Web3 face a persistent existential challen
 In Diem-derived Move Virtual Machines (such as Supra and Aptos), the linear type system prohibits storing or copying `signer` instances, introducing structural hurdles for delegating and renouncing contracts. Furthermore, naive EOA delegation patterns introduce a hazardous **"Dual-Master / Hot-Potato"** dilemma where an EOA creator claims to delegate authority to a DAO while secretly retaining their private key, creating an illusion of decentralization.
 
 This paper specifies a three-path operational framework built on a dual architectural base (new deployments vs. legacy EOAs):
-1. **Deterministic Autonomous Factory (Path 1)**: An automated factory deploying autonomous Resource Accounts with zero private keys from inception, utilizing a canonical domain-separated seed (`b"governance_factory::autonomous_v1"`) to eliminate manual salt hazards and provide stable, predictable compilation targets.
+1. **Deterministic Autonomous Factory (Path 1)**: An automated factory deploying autonomous Resource Accounts with zero private keys from inception, utilizing a canonical domain-separated seed (`b"dao_contracts_vault::autonomous_v1"`) to eliminate manual salt hazards and provide stable, predictable compilation targets.
 2. **EOA Self-Renounce (Path 2)**: The owner burns the private key while no signer-capability offer is active, yielding cryptographically verifiable immutability (`is_eoa_permanently_immutable`) with no factory-side record.
 3. **Cryptographically Verified EOA Migration to DAO (Path 3)**: A trustless migration protocol that binds each legacy EOA to a proxy Resource Account holding its delegated signer capability, giving the EOA the same managed lifecycle as a Resource Account and enabling a real, on-chain renounce via capability revocation.
 
@@ -44,7 +44,7 @@ When an EOA delegates its signer capability to a DAO without destroying its priv
 
 ```
                     ┌──────────────────────────────────────────────┐
-                    │       governance (@governance_factory)       │
+                    │       vault (@dao_contracts_vault)           │
                     └───────┬──────────────────────────────┬───────┘
                             │                              │
                  [Path 1: New Deployments]       [Path 3: Legacy Migration]
@@ -74,12 +74,12 @@ When an EOA delegates its signer capability to a DAO without destroying its priv
 ```
 
 ### 3.1 Path 1: Canonical Deterministic Seed Derivation
-Instead of requiring manual seed inputs, the factory utilizes a canonical domain-separated seed (`AUTONOMOUS_SEED = b"governance_factory::autonomous_v1"`):
+Instead of requiring manual seed inputs, the factory utilizes a canonical domain-separated seed (`AUTONOMOUS_SEED = b"dao_contracts_vault::autonomous_v1"`):
 
-$$\text{Seed} = \texttt{"governance\_factory::autonomous\_v1"}$$
+$$\text{Seed} = \texttt{"dao_contracts_vault::autonomous_v1"} \mathbin{\Vert} \text{Label}$$
 $$\text{ResourceAddress} = \text{SHA3-256}(\text{BCS}(\text{CreatorAddress}) \mathbin{\Vert} \text{Seed} \mathbin{\Vert} \text{0xFF})$$
 
-Because the target address is deterministic and queryable via `predict_next_contract_address(creator)`, automated CI/CD pipelines can pre-compile Move packages with the exact target address before transmitting the deployment transaction, while preventing front-running address squatting.
+Because the target address is deterministic and queryable via `predict_next_contract_address(creator, label)`, automated CI/CD pipelines can pre-compile Move packages with the exact target address before transmitting the deployment transaction, while preventing front-running address squatting. The label namespaces the address, so one creator can host several deployments and the same `(creator, label)` pair always lands on the same account.
 
 ### 3.2 Path 2: EOA Self-Renounce
 For creators who wish to permanently freeze their contract without a DAO intermediary, no factory call is required: the freeze is pure framework state. The owner burns the private key while ensuring that no signer-capability offer is active. Because the Move framework's key-rotation entry point (`account::rotate_authentication_key_call`) is **not `public`**, no module can annihilate the key on the owner's behalf; the burn must be an owner-signed transaction:
@@ -104,7 +104,7 @@ If the private key is not dead, the DAO cannot execute upgrades, preventing prem
 ### 3.4 Proxy Lifecycle and Invariants
 The proxy is a Resource Account derived from the EOA and the fixed domain seed, never stored:
 
-$$\text{proxy}(e) = \text{SHA3-256}(\text{BCS}(e) \mathbin{\Vert} \texttt{"governance\_factory::eoa\_proxy\_v1"} \mathbin{\Vert} \text{0xFF})$$
+$$\text{proxy}(e) = \text{SHA3-256}(\text{BCS}(e) \mathbin{\Vert} \texttt{"dao_contracts_vault::eoa_proxy_v1"} \mathbin{\Vert} \text{0xFF})$$
 
 Its state machine:
 1. **Derive** — `predict_eoa_proxy_address(e)` (pure).
@@ -114,7 +114,7 @@ Its state machine:
 5. **Transfer** — `transfer_admin` re-points `admin`; the offer still targets the proxy, so control is never stranded.
 6. **Freeze** — `renounce_contract` uses the proxy's authorized EOA signer to `account::revoke_signer_capability`, yielding a cryptographically complete freeze.
 
-Invariants: the proxy never publishes directly (only supplies the offer-recipient role and the stored capability); its address is never stored; after renounce the capability is inert. The `cap` is usable only by the `governance` module, which is the system's trust anchor — publishing the module as immutable makes freezes unconditional.
+Invariants: the proxy never publishes directly (only supplies the offer-recipient role and the stored capability); its address is never stored; after renounce the capability is inert. The `cap` is usable only by the `vault` and `publisher` modules of `dao_contracts_vault`, which are the system's trust anchor — renouncing the package itself (`renounce_package_admin`, observable via `is_package_renounced()`) drops the package capability and seals the address of the Resource Account, making freezes unconditional.
 
 ---
 
@@ -159,4 +159,4 @@ Finding a private key $k$ such that $\text{SHA3-256}(\text{PubKey}(k)) = \mathbf
 
 ## 7. Conclusion
 
-The `governance_factory` architecture guarantees that smart contracts in MoveVM can transition from developer-controlled prototypes to mathematically immutable or sovereign DAO-governed institutions with zero possibility of residual backdoors or false decentralization.
+The `dao_contracts_vault` architecture guarantees that smart contracts in MoveVM can transition from developer-controlled prototypes to mathematically immutable or sovereign DAO-governed institutions with zero possibility of residual backdoors or false decentralization.

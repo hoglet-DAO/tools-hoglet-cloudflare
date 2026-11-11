@@ -24,6 +24,64 @@ function parseByte(raw: string): number {
   return value;
 }
 
+/**
+ * Parses user-pasted or raw vector strings into a clean array of string items.
+ * Handles:
+ * - JSON arrays: `["0x1", "0x2"]`
+ * - Formatted / multi-line JSON arrays
+ * - Nested stringified JSON: `["[\"0x1\", \"0x2\"]"]`
+ * - Comma-separated lists: `0x1, 0x2`
+ * - Newline-separated lists:
+ *     0x1
+ *     0x2
+ * - Values with or without quotes / brackets
+ */
+export function parseVectorString(raw: string): string[] {
+  if (!raw || typeof raw !== "string") return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // 1. Try JSON.parse
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        // Flatten single-element nested strings e.g. '["[\"0x1\", ... ]"]'
+        if (
+          parsed.length === 1 &&
+          typeof parsed[0] === "string" &&
+          parsed[0].trim().startsWith("[") &&
+          parsed[0].trim().endsWith("]")
+        ) {
+          return parseVectorString(parsed[0]);
+        }
+        return parsed
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (typeof item === "number" || typeof item === "boolean") return String(item);
+            return JSON.stringify(item);
+          })
+          .map((s) => s.replace(/^['"`]|['"`]$/g, "").trim())
+          .filter((item) => item.length > 0);
+      }
+    } catch {
+      // Fall through if JSON is malformed (e.g. trailing comma, unquoted strings)
+    }
+  }
+
+  // 2. Strip outer brackets if present
+  let content = trimmed;
+  if (content.startsWith("[") && content.endsWith("]")) {
+    content = content.slice(1, -1).trim();
+  }
+
+  // 3. Split by newline or comma
+  const parts = content.split(/[\r\n,]+/);
+  return parts
+    .map((p) => p.trim().replace(/^['"`]|['"`]$/g, "").trim())
+    .filter((p) => p.length > 0);
+}
+
 export function parseMoveArgument(val: string, paramType: string): any {
   if (val === undefined || val === null) return val;
   const trimmed = val.trim();
@@ -61,24 +119,8 @@ export function parseMoveArgument(val: string, paramType: string): any {
       return tokens.map(parseByte);
     }
 
-    // Attempt to parse as JSON first (e.g. if user wrote ["0x1", "0x2"])
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      try {
-        const parsedArray = JSON.parse(trimmed);
-        if (Array.isArray(parsedArray)) {
-          return parsedArray.map((item: any) => parseMoveArgument(String(item), innerType));
-        }
-      } catch (e) {
-        console.warn("Failed to parse JSON array for Move Argument, falling back to comma-split", e);
-      }
-    }
-
-    // Permissive comma-separated fallback (e.g. "1, 2, 3" or "0x1, 0x2")
-    if (trimmed === "") return []; // empty array
-    
-    // We split by comma, but be careful not to split commas inside nested brackets (though usually Move inputs aren't that complex)
-    const parts = trimmed.split(",").map(s => s.trim()).filter(s => s.length > 0);
-    return parts.map(part => parseMoveArgument(part, innerType));
+    const items = parseVectorString(trimmed);
+    return items.map((item) => parseMoveArgument(item, innerType));
   }
 
   // 2. Handle Booleans
@@ -110,14 +152,16 @@ export function parseMoveArgument(val: string, paramType: string): any {
 
   // 5. Default (Address, String, Structs, etc) -> Return String type
   if (typeof trimmed === "string") {
+    const unquoted = trimmed.replace(/^['"`]|['"`]$/g, "").trim();
     // If it looks like a struct (address::module::name) and is missing 0x
-    if (trimmed?.includes("::") && !trimmed.startsWith("0x")) {
-      return "0x" + trimmed;
+    if (unquoted?.includes("::") && !unquoted.startsWith("0x")) {
+      return "0x" + unquoted;
     }
     // If it is an address and is missing 0x
-    if (paramType === "address" && !trimmed.startsWith("0x")) {
-      return "0x" + trimmed;
+    if (paramType === "address" && !unquoted.startsWith("0x")) {
+      return "0x" + unquoted;
     }
+    return unquoted;
   }
 
   return trimmed;

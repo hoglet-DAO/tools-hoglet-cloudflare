@@ -1,13 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { useSupraWallet } from "@/context/SupraWalletContext";
 import { motion } from "framer-motion";
 import useView from "@/hooks/features/view/useView";
 import { useContractModules } from "@/hooks/features/contracts/useContractModules";
-import { readJson, writeJson, STORAGE_KEYS } from "@/lib/storage";
+import { useAddressSubject } from "@/hooks/features/useAddressSubject";
+import { STORAGE_KEYS } from "@/lib/storage";
 import { formatSupraError } from "@/utils/supra/errors";
 import { parseMoveArgument } from "@/utils/moveParser";
 import { showTransactionSuccessAlert, showErrorToast } from '@/utils/supra/alertService';
@@ -16,16 +16,15 @@ import { trace } from '@/lib/debug';
 
 // Wizard Subcomponents
 import { MeshBackground } from "./wizard/MeshBackground";
-import { AddressInput } from "./wizard/AddressInput";
 import { ContractTabs } from "./wizard/ContractTabs";
 import { WizardUrlSync } from "./wizard/WizardUrlSync";
+import { SubjectBar } from "./contracts/SubjectBar";
 import { Suspense } from "react";
 
 export default function TaskWizard() {
   const t = useTranslations("Dashboard");
   const { network } = useNetwork();
-  const { accounts, connect, disconnect, rpcUrl, sendRawTransaction } = useSupraWallet();
-  const searchParams = useSearchParams();
+  const { accounts, rpcUrl, sendRawTransaction } = useSupraWallet();
   const address = accounts[0] || "";
   const isConnected = !!address;
 
@@ -48,46 +47,44 @@ export default function TaskWizard() {
   }, [network, clearModules]);
 
   const { callView } = useView();
-  const [manualAddress, setManualAddress] = useState("");
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  useEffect(() => {
-    // The interactor's own list. It holds contract addresses, while the inspector's holds tokens; one
-    // shared key meant each showed the other's entries.
-    setRecentSearches(readJson<string[]>(STORAGE_KEYS.interactorRecent, []));
-  }, []);
+  /**
+   * The address being explored, owned by the shared hook.
+   *
+   * It used to live here as three separate things — `manualAddress` state, a recents list read and
+   * written by hand, and a `?address` reader that duplicated the one in `WizardUrlSync`, so a shared
+   * link scanned twice. Now the hook reads the deep link once and owns the parameter.
+   */
+  const {
+    address: manualAddress,
+    setAddress: setManualAddress,
+    submit,
+    recents: recentSearches,
+  } = useAddressSubject({
+    storageKey: STORAGE_KEYS.contractRecent,
+    onCommit: (addr) => scanModules(addr, rpcUrl),
+  });
 
-  const targetAddress = manualAddress || address;
-
-  const handleScan = (addrToScan: string) => {
-    if (addrToScan) {
-      scanModules(addrToScan, rpcUrl);
-      setRecentSearches(prev => {
-      const newRecent = [addrToScan, ...prev.filter(q => q !== addrToScan)].slice(0, 5);
-      writeJson(STORAGE_KEYS.interactorRecent, newRecent);
-        return newRecent;
-      });
-    }
+  const handleScan = (addrToScan?: string) => {
+    submit(addrToScan);
   };
 
   /**
-   * Opens straight onto an address when one is given in the URL.
+   * Falls back to the connected wallet when the URL names no contract.
    *
-   * The workspace links here with the address it is about to deploy to, and a link that only landed on an
-   * empty search box would make the reader paste back what the app already knew. Mirrors what the inspector
-   * does with the same parameter.
-   *
-   * Mount-only on purpose: depending on `searchParams` would rescan and rewrite the recent list on every
-   * render that touched it.
+   * This lived in `WizardUrlSync` as a side effect of its address read. It stays here because it is a
+   * decision about what to show on arrival, not part of keeping the URL and the field in step.
    */
-  const queryAddress = searchParams.get("address");
+  const shownOnce = useRef(false);
   useEffect(() => {
-    if (queryAddress) {
-      setManualAddress(queryAddress);
-      handleScan(queryAddress);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryAddress]);
+    if (shownOnce.current) return;
+    shownOnce.current = true;
+    // A `?address` in the URL wins: the hook has already committed and scanned it by now.
+    if (manualAddress || !address || !rpcUrl) return;
+    scanModules(address, rpcUrl);
+  }, [manualAddress, address, rpcUrl, scanModules]);
+
+  const targetAddress = manualAddress || address;
 
   const handleExecuteFunction = async (func: any, functionParams: { [key: string]: string }, typeParams: { [key: string]: string }) => {
     if (!selectedModule || !targetAddress) return { success: false, error: "Module or Address not selected." };
@@ -163,30 +160,25 @@ export default function TaskWizard() {
       <MeshBackground />
       <Suspense fallback={null}>
         <WizardUrlSync
-          manualAddress={manualAddress}
-          setManualAddress={setManualAddress}
           selectedModuleName={selectedModule?.name}
-          address={address}
-          scanModules={scanModules}
-          rpcUrl={rpcUrl}
           modules={modules}
           onSelectModule={handleSelectModule}
         />
       </Suspense>
       {/* Target Address Search Bar */}
-      <AddressInput
-        isConnected={isConnected}
-        address={address}
-        manualAddress={manualAddress}
-        setManualAddress={setManualAddress}
-        onScan={(addr?: string) => {
-          const addressToScan = (typeof addr === 'string' ? addr : manualAddress) || address;
-          handleScan(addressToScan);
+      <SubjectBar
+        mode="interact"
+        value={manualAddress}
+        onChange={setManualAddress}
+        onSubmit={() => handleScan(manualAddress || address)}
+        isScanning={isScanning}
+        recents={recentSearches}
+        onPickRecent={(addr) => {
+          setManualAddress(addr);
+          handleScan(addr);
         }}
-        onConnect={() => connect('starkey')}
-        onDisconnect={disconnect}
-        glassStyle={glassStyle}
-        recentSearches={recentSearches}
+        placeholder={isConnected && address ? address : "0x..."}
+        showPopular
       />
 
       {/* Loading Skeleton */}

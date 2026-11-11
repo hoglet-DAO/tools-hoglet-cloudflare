@@ -9,6 +9,28 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    // Mirrors the `locales` list in i18n/routing.ts. Spelled out rather than imported: next.config is
+    // evaluated outside the app's module graph, and pulling in next-intl here to read one array is a
+    // heavier dependency than the duplication it removes.
+    const LOCALES = ["ar", "de", "en", "es", "fr", "hi", "id", "ja", "ko", "ru", "zh", "pt", "ha"];
+
+    return [
+      // `/governance` became `/deploy`: the label already said "Deploy a contract", and the old slug named
+      // the module the page talks to rather than the action the visitor came for.
+      //
+      // Permanent, because the old path is already out in the world - the docs site, the llms.txt guide and
+      // any bookmark point at it - and a temporary redirect would leave them all pointing at a slower hop.
+      ...LOCALES.map((locale) => ({
+        source: `/${locale}/governance`,
+        destination: `/${locale}/deploy`,
+        permanent: true,
+      })),
+      // The bare path carries no locale, and the middleware matcher deliberately does not catch unprefixed
+      // routes, so without this it 404s instead of following the visitor to the default locale.
+      { source: "/governance", destination: "/en/deploy", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -52,6 +74,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'gateway.pinata.cloud' },
       { protocol: 'https', hostname: 'gateway.lighthouse.storage' },
       { protocol: 'https', hostname: 'ipfs.hoglet.xyz' },
+      { protocol: 'https', hostname: 'pub-051414983f2e4fb6bc4b908ff3bcb03c.r2.dev', pathname: '/**' },
     ],
   },
   eslint: {

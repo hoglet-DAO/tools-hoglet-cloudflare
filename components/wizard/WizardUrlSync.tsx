@@ -4,95 +4,56 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 interface WizardUrlSyncProps {
-  manualAddress: string;
-  setManualAddress: (addr: string) => void;
   selectedModuleName: string | undefined;
-  address: string; // The connected wallet address
-  scanModules: (addr: string, rpcUrl: string) => void;
-  rpcUrl: string;
-  modules: any[];
   onSelectModule: (mod: any) => void;
+  modules: any[];
 }
 
-export function WizardUrlSync({
-  manualAddress,
-  setManualAddress,
-  selectedModuleName,
-  address,
-  scanModules,
-  rpcUrl,
-  modules,
-  onSelectModule,
-}: WizardUrlSyncProps) {
+/**
+ * Keeps `?module=` in the URL in step with the selected module.
+ *
+ * This used to own the address too — it read `?address` on mount, scanned from it, and wrote it back —
+ * and `TaskWizard` read the same parameter independently to do the same two things. Every shared link
+ * therefore scanned the contract twice. The address is now owned in one place by `useAddressSubject`;
+ * what remains here is the part that is genuinely interactor-specific, which is the selected module:
+ * it is meaningless in the inspector, where the URL carries an account rather than a function.
+ *
+ * Writing the parameter still copies the current search params and touches only `module`, so the
+ * address the hook wrote — and the `?network` the network context owns — both survive a module change.
+ */
+export function WizardUrlSync({ selectedModuleName, modules, onSelectModule }: WizardUrlSyncProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // 1. Initialize from URL on mount
+  // Selects the module named in the URL, once the modules for this contract have arrived.
   useEffect(() => {
-    if (hasInitialized) return;
-
-    const urlAddress = searchParams.get("address");
-    
-    if (urlAddress) {
-      setManualAddress(urlAddress);
-      if (rpcUrl) {
-        scanModules(urlAddress, rpcUrl);
-      }
-    } else if (address && !manualAddress) {
-      // If no URL address, but wallet is connected, scan the wallet address
-      if (rpcUrl) {
-        scanModules(address, rpcUrl);
-      }
-    }
-    
+    if (hasInitialized || modules.length === 0) return;
     setHasInitialized(true);
-  }, [hasInitialized, searchParams, setManualAddress, scanModules, rpcUrl, address, manualAddress]);
-
-  // 2. Sync selected module from URL once modules are loaded
-  useEffect(() => {
-    if (!hasInitialized || modules.length === 0) return;
 
     const urlModule = searchParams.get("module");
     if (urlModule && !selectedModuleName) {
-      const foundMod = modules.find((m) => m.name === urlModule);
-      if (foundMod) {
-        onSelectModule(foundMod);
-      }
+      const found = modules.find((m) => m.name === urlModule);
+      if (found) onSelectModule(found);
     }
   }, [hasInitialized, modules, searchParams, selectedModuleName, onSelectModule]);
 
-  // 3. Write state changes back to URL
+  // Writes the selection back. Guarded so it never fires before the URL read has had its turn.
   useEffect(() => {
     if (!hasInitialized) return;
 
-    const currentParams = new URLSearchParams(searchParams.toString());
-    let changed = false;
+    const current = searchParams.get("module");
+    if (selectedModuleName === current) return;
 
-    if (manualAddress && manualAddress !== currentParams.get("address")) {
-      currentParams.set("address", manualAddress);
-      changed = true;
-    } else if (!manualAddress && currentParams.has("address")) {
-      currentParams.delete("address");
-      changed = true;
-    }
+    const params = new URLSearchParams(searchParams.toString());
+    if (selectedModuleName) params.set("module", selectedModuleName);
+    else params.delete("module");
 
-    if (selectedModuleName && selectedModuleName !== currentParams.get("module")) {
-      currentParams.set("module", selectedModuleName);
-      changed = true;
-    } else if (!selectedModuleName && currentParams.has("module")) {
-      currentParams.delete("module");
-      changed = true;
-    }
-
-    if (changed) {
-      const search = currentParams.toString();
-      const query = search ? `?${search}` : "";
-      router.replace(`${pathname}${query}`, { scroll: false });
-    }
-  }, [manualAddress, selectedModuleName, hasInitialized, pathname, router, searchParams]);
+    const search = params.toString();
+    router.replace(`${pathname}${search ? `?${search}` : ""}`, { scroll: false });
+  }, [selectedModuleName, hasInitialized, pathname, router, searchParams]);
 
   return null;
 }

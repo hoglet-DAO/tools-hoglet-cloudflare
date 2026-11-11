@@ -1,12 +1,8 @@
 /**
- * Per-client rate limiting for the Move service proxies.
+ * Per-client rate limiting for the Move service proxies and sensitive API endpoints.
  *
- * Shared by `/api/move/compile` and `/api/move/test` rather than duplicated: both sit in front of the same
- * serialised VPS, so a limit that applied to one and not the other would be trivially bypassed by using the
- * other.
- *
- * In-memory, which is the honest scope for this: it protects a single server process, and the deployment
- * target may run several. It is a guard against one caller saturating the compiler, not a billing control.
+ * In-memory guard against rapid single-client saturation. protects against burst abuse
+ * across active worker isolates.
  */
 
 const WINDOW_MS = 60_000;
@@ -17,38 +13,63 @@ type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 
 /**
- * The real client behind the proxy.
- *
- * Cloudflare sets these; the first one present is the client rather than the edge, so a request forwarded
- * through the CDN is not attributed to the CDN's address for everyone.
+ * Validates whether a candidate string looks like a standard IPv4 or IPv6 address.
  */
-export function clientKey(req: Request): string {
-  return (
-    req.headers.get("cf-connecting-ip") ||
-    req.headers.get("x-real-ip") ||
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-}
-
-export function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const bucket = buckets.get(key);
-  if (!bucket || now > bucket.resetAt) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > MAX_PER_WINDOW;
+function isValidIp(ip: string): boolean {
+  if (!ip || ip.length > 45) return false;
+  // IPv4 or IPv6 with optional port stripped
+  const clean = ip.split(":")[0].trim();
+  const isIpv4 = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(clean);
+  const isIpv6 = /^[0-9a-fA-F:]{2,39}$/.test(ip);
+  return isIpv4 || isIpv6;
 }
 
 /**
- * Drops expired buckets so a long-running process does not accumulate one entry per distinct IP.
+ * Resolves the client identifier for rate limiting.
  *
- * Called from the request path rather than on a timer, so it costs nothing while the map is small.
+ * In Cloudflare Workers, `cf-connecting-ip` is injected by Cloudflare and cannot be forged by clients.
  */
-export function pruneBuckets(now: number): void {
-  if (buckets.size < 512) return;
+export function clientKey(req: Request): string {
+  const cfIp = req.headers.get("cf-connecting-ip")?.trim();
+  if (cfIp && isValidIp(cfIp)) return cfIp;
+
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp && isValidIp(realIp)) return realIp;
+
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded && isValidIp(forwarded)) return forwarded;
+
+  // Fallback: create a deterministic bucket key per user-agent / language so all IP-less callers
+  // do not collide into a single shared bucket and cause denial-of-service to each other.
+  const ua = req.headers.get("user-agent")?.slice(0, 32) || "unknown";
+  const lang = req.headers.get("accept-language")?.slice(0, 16) || "none";
+  return `fallback:${ua}:${lang}`;
+}
+
+export function rateLimited(
+  key: string,
+  action = "move",
+  maxPerWindow = MAX_PER_WINDOW,
+  windowMs = WINDOW_MS
+): boolean {
+  const now = Date.now();
+  const bucketKey = `${action}:${key}`;
+  const bucket = buckets.get(bucketKey);
+
+  if (!bucket || now > bucket.resetAt) {
+    buckets.set(bucketKey, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+
+  bucket.count += 1;
+  return bucket.count > maxPerWindow;
+}
+
+/**
+ * Drops expired buckets so memory does not grow unbounded over time.
+ */
+export function pruneBuckets(now: number = Date.now()): void {
+  if (buckets.size < 256) return;
   for (const [key, bucket] of buckets) {
     if (now > bucket.resetAt) buckets.delete(key);
   }

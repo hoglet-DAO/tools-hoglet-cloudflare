@@ -45,7 +45,7 @@ const DOS_DATE = ((2024 - 1980) << 9) | (1 << 5) | 1;
 export interface ZipEntry {
   /** Forward-slash path inside the archive. Backslashes would create flat, oddly named entries. */
   path: string;
-  content: string;
+  content: string | Uint8Array;
 }
 
 /** Grows by doubling; the final size is not known until every entry is measured. */
@@ -92,7 +92,7 @@ class ByteWriter {
 }
 
 /**
- * Builds a ZIP archive from text entries.
+ * Builds a ZIP archive from text or binary entries.
  *
  * Rejects duplicate paths rather than writing them: a ZIP with two entries under one name extracts
  * differently depending on the tool, so an archive whose contents depend on the extractor is not
@@ -111,7 +111,7 @@ export function createZip(entries: ZipEntry[]): Uint8Array {
     }
     seen.add(entry.path);
 
-    const data = encoder.encode(entry.content);
+    const data = typeof entry.content === "string" ? encoder.encode(entry.content) : entry.content;
     const crc = crc32(data);
     const offset = out.offset;
 

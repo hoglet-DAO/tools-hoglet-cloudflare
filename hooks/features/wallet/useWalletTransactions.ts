@@ -4,6 +4,8 @@ import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
 import { serializeTransactionArgs } from '@/utils/supra/abi';
 import { sendStarkeyTransaction } from '@/utils/supra/starkeyPayload';
 import { sendRibbitTransaction } from '@/utils/supra/ribbitPayload';
+import { isUSTimezone, hasUserSignedConsent } from '@/lib/compliance';
+import { toast } from 'sonner';
 
 interface TransactionOptions {
   isSponsored?: boolean;
@@ -26,6 +28,20 @@ export const useWalletTransactions = (
     options: TransactionOptions = {} // Default options
   ) => {
     if (!provider || !account) return;
+
+    // Legal Compliance & Anti-VPN Guard
+    if (isUSTimezone()) {
+      toast.error('Transaction blocked: United States jurisdiction detected.');
+      throw new Error('Access restricted for residents in the United States.');
+    }
+
+    if (!hasUserSignedConsent(account)) {
+      toast.error('Jurisdiction certification required before executing transactions.');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-legal-consent-modal'));
+      }
+      throw new Error('Please sign the jurisdiction compliance certification to proceed.');
+    }
 
     // Detect environment properly from RPC to map the correct chain ID
     // Default to testnet (6) unless the RPC URL explicitly matches mainnet

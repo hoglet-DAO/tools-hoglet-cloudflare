@@ -188,6 +188,34 @@ check("everything is under sources/",
   JSON.stringify(shape.project?.modules.map((m) => m.path)));
 
 console.log();
+console.log("a local build/ folder is excluded from the import:");
+// Compiling locally leaves `build/<Package>/sources/*.move` next to the real sources. Those are copies:
+// importing them registers every module twice (or shadows the real file) and the package stops compiling,
+// after an import that looked complete. Common enough that it cannot depend on deleting build/ by hand.
+const built = proj.projectFromFiles([
+  { name: "Move.toml", relativePath: "pkg/Move.toml", content: TOML },
+  { name: "Pool.move", relativePath: "pkg/sources/Pool.move", content: "module imported::Pool {}" },
+  { name: "Move.toml", relativePath: "pkg/build/imported/Move.toml", content: TOML },
+  { name: "Pool.move", relativePath: "pkg/build/imported/sources/Pool.move", content: "module imported::Pool {}" },
+  // Windows-style relative path from a folder picker: the exclusion must survive the separator.
+  { name: "Deep.move", relativePath: "pkg\\build\\imported\\sources\\Deep.move", content: "module imported::Deep {}" },
+]);
+check("imports the package", built.ok === true, built.error);
+check("only the real sources reach the tree",
+  built.project?.modules.map((m) => m.path).join() === "sources/Pool.move",
+  JSON.stringify(built.project?.modules.map((m) => m.path)));
+check("build copies are not reported as skipped user data",
+  !built.skipped, JSON.stringify(built.skipped));
+
+const legitBuildDir = proj.projectFromFiles([
+  { name: "Move.toml", relativePath: "pkg/Move.toml", content: TOML },
+  { name: "Build.move", relativePath: "pkg/sources/build/Build.move", content: "module imported::Build {}" },
+]);
+check("a module folder named build under sources/ is not mistaken for an artifact",
+  legitBuildDir.project?.modules.some((m) => m.path === "sources/build/Build.move"),
+  JSON.stringify(legitBuildDir.project?.modules.map((m) => m.path)));
+
+console.log();
 console.log("the standard is enforced, not assumed:");
 // A package may legitimately contain a `tests/` directory, but this workspace only ever compiles what is
 // under `sources/`. A file imported from elsewhere is moved there rather than kept where the compiler

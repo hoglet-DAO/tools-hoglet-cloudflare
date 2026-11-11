@@ -4,6 +4,7 @@ import nacl from 'tweetnacl';
 import { WalletType } from '@/utils/types';
 import { WALLET_CONFIGS } from '@/utils/supra/wallet-configs';
 import { trace, traceWarn } from "@/lib/debug";
+import { isUSTimezone, hasUserSignedConsent } from '@/lib/compliance';
 
 /** An Ed25519 signature is 64 bytes and a public key 32, both as `0x`-prefixed hex. */
 const ED25519_SIG_HEX_CHARS = 128;
@@ -127,6 +128,20 @@ export const useWalletAuth = (
    */
   const signRawHex = useCallback(async (hex: string, nonce = "0") => {
     if (!provider || !account) throw new Error('Wallet not connected');
+
+    // Legal Compliance & Anti-VPN Guard
+    if (isUSTimezone()) {
+      toast.error('Transaction signing blocked: United States jurisdiction detected.');
+      throw new Error('Access restricted for residents in the United States.');
+    }
+
+    if (!hasUserSignedConsent(account)) {
+      toast.error('Jurisdiction certification required before executing transactions.');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-legal-consent-modal'));
+      }
+      throw new Error('Please sign the jurisdiction compliance certification to proceed.');
+    }
     if (!WALLET_CONFIGS[walletType].capabilities.signMessage) {
       throw new Error('Signing not supported by this wallet');
     }

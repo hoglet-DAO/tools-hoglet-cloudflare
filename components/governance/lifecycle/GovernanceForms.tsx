@@ -28,7 +28,8 @@ export function UpgradeForm({
   const [source, setSource] = useState<"code" | "upload">("code");
 
   const targetMatches = !fromWorkspace || !target || sameAddress(target, contract);
-  const ready = isUsableHex(metadata) && modules.length > 0 && targetMatches;
+  // The workspace builds without a wallet; only the upgrade transaction needs a signer.
+  const ready = !!wallet && isUsableHex(metadata) && modules.length > 0 && targetMatches;
 
   return (
     <Form
@@ -38,7 +39,13 @@ export function UpgradeForm({
       pending={isPending}
       cta={t("upgradeFormCta")}
       tone="emerald"
-      reason={targetMatches ? undefined : t("upgradeTargetMismatch", { target, contract })}
+      reason={
+        !wallet
+          ? t("connectToSend")
+          : targetMatches
+            ? undefined
+            : t("upgradeTargetMismatch", { target, contract })
+      }
       onSubmit={() =>
         run("upgrade_contract", [contract, metadata, modules.map((m) => m.hex)], { successAddress: contract })
       }
@@ -148,8 +155,10 @@ export function GovernanceForm({
   const [renounceOpen, setRenounceOpen] = useState(false);
 
   const addrOk = /^0x[0-9a-fA-F]{1,64}$/.test(next.trim()) && next.trim() !== "0x0";
-  const transferReady = addrOk && sameAddress(confirm.trim(), next.trim());
-  const renounceReady = typed.trim() !== "" && sameAddress(typed.trim(), contract);
+  // Neither action can be prepared without a signer, but both cards stay readable and editable so the
+  // visitor can see what governing the contract involves before connecting anything.
+  const transferReady = !!wallet && addrOk && sameAddress(confirm.trim(), next.trim());
+  const renounceReady = !!wallet && typed.trim() !== "" && sameAddress(typed.trim(), contract);
 
   return (
     <div className="space-y-4">
@@ -176,6 +185,7 @@ export function GovernanceForm({
         pending={pendingTransfer}
         cta={t("transferFormCta")}
         tone="emerald"
+        reason={wallet ? undefined : t("connectToSend")}
         onSubmit={() => run("transfer_admin", [contract, next.trim()], { successAddress: contract })}
       >
         <Field label={t("fieldNewAdmin")} hint={t("fieldNewAdminHint")}>
@@ -208,6 +218,7 @@ export function GovernanceForm({
         cta={t("renounceFormCta")}
         tone="rose"
         hideCta={!renounceOpen}
+        reason={wallet ? undefined : t("connectToSend")}
         onSubmit={() => run("renounce_contract", [contract], { successAddress: contract })}
       >
         {!renounceOpen ? (

@@ -102,6 +102,10 @@ interface RawCompileResponse {
   metadata?: string;
   /** Hex of each `.mv`, in the same order as `modules`. */
   bytecode?: string[];
+  /** Move Script names, if any script was compiled. */
+  script_names?: string[];
+  /** Hex of each compiled script bytecode. */
+  scripts?: string[];
   /** True when the artifacts exceeded the service's size limit and were not returned. */
   artifacts_omitted?: boolean;
   /** Size of the built artifacts, in bytes, so the client can warn before hitting the cap. */
@@ -128,6 +132,10 @@ export interface CompileResponse {
   metadata: string | null;
   /** Hex of each module, `0x`-prefixed, in the same order as `modules` — the `code` argument. */
   bytecode: string[];
+  /** Move Script names compiled in the package. */
+  scriptNames?: string[];
+  /** Hex of each compiled script bytecode, `0x`-prefixed. */
+  scripts?: string[];
   /** True when the service could not return the artifacts within its size limit. */
   artifactsOmitted: boolean;
   /** Artifact size the service reported, when it sends one. */
@@ -170,6 +178,13 @@ export type CompileResult = CompileResponse | CompileFailure;
  * The upstream also rejects `..`, but only after our server has already forwarded it — the token and a
  * network round trip are spent on a request that could not succeed.
  */
+export const MAX_PACKAGE_FILES = 60;
+export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB per file
+
+/**
+ * Path and manifest security validation, enforced here so hostile or unsafe payloads
+ * never reach the compile VPS.
+ */
 export function validateFiles(files: unknown): { ok: true; files: Record<string, string> } | { ok: false; error: string } {
   if (!files || typeof files !== "object" || Array.isArray(files)) {
     return { ok: false, error: "files must be an object mapping path to source" };
@@ -178,24 +193,89 @@ export function validateFiles(files: unknown): { ok: true; files: Record<string,
   if (entries.length === 0) {
     return { ok: false, error: "files is empty" };
   }
+  if (entries.length > MAX_PACKAGE_FILES) {
+    return { ok: false, error: `too many files: maximum allowed is ${MAX_PACKAGE_FILES}` };
+  }
   if (!("Move.toml" in (files as Record<string, unknown>))) {
     return { ok: false, error: "Move.toml is required" };
   }
 
-  const clean: Record<string, string> = {};
+  const clean: Record<string, string> = Object.create(null);
   for (const [path, content] of entries) {
     if (typeof content !== "string") {
       return { ok: false, error: `file "${path}" must be a string` };
     }
-    if (!path || path.startsWith("/") || path.includes("\\")) {
+    if (content.length > MAX_FILE_SIZE_BYTES) {
+      return { ok: false, error: `file "${path}" exceeds 2MB limit` };
+    }
+    if (
+      !path ||
+      path.length > 150 ||
+      path === "__proto__" ||
+      path === "constructor" ||
+      path === "prototype"
+    ) {
       return { ok: false, error: `invalid path "${path}"` };
     }
+    if (!/^[A-Za-z0-9_\-./]+$/.test(path)) {
+      return { ok: false, error: `invalid characters in path "${path}"` };
+    }
+    if (path.startsWith("/") || path.includes("\\") || path.includes("//")) {
+      return { ok: false, error: `invalid path format "${path}"` };
+    }
+
     const parts = path.split("/");
-    if (parts.includes("..") || parts.includes(".")) {
-      return { ok: false, error: `invalid path "${path}"` };
+    if (parts.some((part) => part === "." || part === ".." || part.startsWith("."))) {
+      return { ok: false, error: `invalid path traversal in "${path}"` };
     }
+
+    // Allowlist allowed project structure: Move.toml at root, sources/, tests/, scripts/ (*.move), or doc/ (*.md)
+    if (path === "Move.toml") {
+      // Move.toml is checked below
+    } else if (
+      (path.startsWith("sources/") || path.startsWith("tests/") || path.startsWith("scripts/")) &&
+      path.endsWith(".move")
+    ) {
+      // Safe move module or test file
+    } else if (path.startsWith("doc/") && path.endsWith(".md")) {
+      // Documentation file
+    } else {
+      return {
+        ok: false,
+        error: `invalid path "${path}": only Move.toml and files under sources/, tests/, scripts/ (*.move) or doc/ (*.md) are allowed`,
+      };
+    }
+
     clean[path] = content;
   }
+
+  // Security inspection of Move.toml
+  const moveToml = clean["Move.toml"];
+  if (moveToml.length > 64 * 1024) {
+    return { ok: false, error: "Move.toml exceeds 64KB limit" };
+  }
+
+  // Block local filesystem dependencies (prevents local file inclusion / path traversal on VPS)
+  if (/^\s*local\s*=/m.test(moveToml) || /local\s*=\s*["']/i.test(moveToml)) {
+    return { ok: false, error: "local dependencies are forbidden in Move.toml" };
+  }
+
+  // Block SSRF / private network probing in git dependencies
+  const gitMatches = moveToml.matchAll(/git\s*=\s*["']([^"']+)["']/gi);
+  for (const match of gitMatches) {
+    const url = match[1].trim();
+    if (!/^(https:\/\/|git@)/i.test(url)) {
+      return { ok: false, error: `insecure git dependency protocol in Move.toml: "${url}"` };
+    }
+    if (
+      /localhost|127\.0\.0\.1|0\.0\.0\.0|169\.254\.|10\.\d+\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|\[::1\]/i.test(
+        url
+      )
+    ) {
+      return { ok: false, error: `private or internal git dependencies are not allowed in Move.toml` };
+    }
+  }
+
   return { ok: true, files: clean };
 }
 
@@ -374,6 +454,8 @@ async function callService(
         modules: (json.modules ?? []).map(normalizeModuleId),
         metadata: rawMetadata,
         bytecode: (json.bytecode ?? []).map((b) => normalizeHexBytes(b) ?? ""),
+        scriptNames: json.script_names ?? [],
+        scripts: (json.scripts ?? []).map((s) => normalizeHexBytes(s) ?? ""),
         artifactsOmitted: json.artifacts_omitted === true,
         sizeBytes: json.size_bytes,
         hint: json.hint,

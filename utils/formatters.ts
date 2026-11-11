@@ -1,15 +1,25 @@
 /**
- * Acorta una dirección de wallet para mostrarla de forma más legible.
+ * Acorta una dirección para mostrarla de forma legible, del tipo `0x1234abcd...5678`.
+ *
+ * Tres surfaces showed a shortened address and each had written the slice inline — the interactor's
+ * address bar, the inspector's search bar and its type labels — with `6` leading and `4` trailing
+ * characters. They drifted only in that they were copies, so they are one function now. The asymmetric
+ * `head`/`tail` defaults are the shape the UI has always used; the symmetric `chars` form is kept for
+ * callers that want the original behaviour.
+ *
  * @param address La dirección completa.
- * @param chars El número de caracteres a mostrar al principio y al final.
- * @returns La dirección acortada (ej: "0x1234...5678").
+ * @param chars Longitud igual para la cabeza y la cola, para el formato simétrico original.
+ * @param head Caracteres a mostrar al principio.
+ * @param tail Caracteres a mostrar al final.
  */
-export const shortAddress = (address: string, chars = 4): string => {
+export const shortenAddress = (address: string, chars?: number, head = 6, tail = 4): string => {
   if (!address) return "";
-  if (address.length <= chars * 2) {
-    return address;
-  }
-  return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+
+  // The original symmetric signature: equal heads and tails.
+  const [h, t] = typeof chars === "number" ? [chars, chars] : [head, tail];
+  if (address.length <= h + t) return address;
+
+  return `${address.substring(0, h)}...${address.substring(address.length - t)}`;
 };
 
 /**

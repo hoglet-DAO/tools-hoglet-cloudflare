@@ -5,9 +5,13 @@ const MESSAGES = path.join(__dirname, "..", "messages");
 const LOCALES = ["ar", "de", "en", "es", "fr", "ha", "hi", "id", "ja", "ko", "pt", "ru", "zh"];
 const NS = "Governance";
 
-// Keys referenced by the governance UI. Walk the folder recursively: the lifecycle runner and the
-// workspace were each split into their own subfolders, and those hold most of the strings.
-const SRC_DIR = path.join(__dirname, "..", "components", "governance");
+// Keys referenced by the governance UI. Walk the folders recursively: the lifecycle runner and the
+// workspace were each split into their own subfolders, and those hold most of the strings. The `ai`
+// folder is scanned too because the vault AI-pack button reuses the Governance namespace from there.
+const SRC_DIRS = [
+  path.join(__dirname, "..", "components", "governance"),
+  path.join(__dirname, "..", "components", "ai"),
+];
 function readSources(dir) {
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -19,7 +23,7 @@ function readSources(dir) {
   }
   return out;
 }
-const src = readSources(SRC_DIR).join("\n");
+const src = SRC_DIRS.flatMap((dir) => readSources(dir)).join("\n");
 
 const used = new Set();
 // Require a boundary before `t(` so calls like `connect("starkey")` are not mistaken for `t("...")`.

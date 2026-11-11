@@ -221,8 +221,9 @@ export function Form({
   /**
    * Suppresses the submit button (and its `reason` hint) entirely.
    *
-   * For a card whose action must be revealed deliberately: a disabled "destroy everything" button is
-   * still an invitation, and it competes with the control that is supposed to unlock the flow.
+   * For a card whose action must be revealed deliberately - a disabled "destroy everything" button is
+   * still an invitation, and it competes with the control that is supposed to unlock the flow - or whose
+   * action already lives in another control on the page, so a second button would be the same call twice.
    */
   hideCta?: boolean;
   onSubmit: () => void | Promise<unknown>;

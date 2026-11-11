@@ -36,13 +36,34 @@ export const STORAGE_KEYS = {
   daoAdmin: "hgl:dao-admin",
   /** Testnet or mainnet. */
   network: "hgl:network",
-  /** Addresses recently looked up in the token inspector. */
+  /**
+   * Addresses recently looked up, across both the token inspector and the interactor.
+   *
+   * The two surfaces kept a list each, on the theory that the inspector holds tokens and the interactor
+   * holds contracts and neither should be offered the other's entries. They now share one address bar,
+   * and the bar does not know or care which kind of thing you are about to look at — so one list is the
+   * honest shape. A contract address from the interactor is just as valid to audit, and a token address
+   * is just as valid to scan.
+   */
+  contractRecent: "hgl:contract-recent",
+  /**
+   * The per-surface lists this replaced. Read once to merge them forward; never written again.
+   *
+   * Kept as separate keys rather than folded into `LEGACY_KEYS` so that the migration has a name to be
+   * found by, and so the reason they stopped being separate is recorded next to the keys themselves.
+   */
   inspectorRecent: "hgl:inspector-recent",
-  /** Addresses recently scanned in the interactor. Kept apart from the inspector's: one holds tokens, the
-   * other contracts, and a shared list offered each feature the other's entries. */
   interactorRecent: "hgl:interactor-recent",
   /** Last wallet used, so connect can preselect it. */
   recentWallet: "hgl:recent-wallet",
+  /**
+   * Package sizes the compile service has already measured, keyed by content hash.
+   *
+   * Before a first compile the workspace can only report the source size, which runs about three times the
+   * compiled artifact size and reads like a number it is not. The compiler is deterministic, so a size that
+   * was measured once still holds, and recording it lets the workspace say "63 KB, measured" instead.
+   */
+  compileSizes: "hgl:compile-sizes",
   /** Wallet selection read by the supra-l1-sdk bridge. */
   selectedWallet: "hgl:selected-wallet",
   /** Legal modal acknowledgement. */
@@ -70,6 +91,14 @@ const LEGACY_KEYS: Record<string, string[]> = {
   "hgl:network": ["hoglet-network"],
   "hgl:inspector-recent": ["hoglet-recent-searches"],
   "hgl:interactor-recent": ["hoglet-recent-searches"],
+  /**
+   * Both per-surface lists, and the mixed one that preceded them.
+   *
+   * The two lists are kept separate above so each keeps its own key, but the migration merges them: a
+   * visitor who audited tokens on one surface and called contracts on the other would otherwise lose
+   * whichever list happened not to be found first.
+   */
+  "hgl:contract-recent": ["hgl:inspector-recent", "hgl:interactor-recent", "hoglet-recent-searches"],
   "hgl:recent-wallet": ["recent_wallet_type"],
   "hgl:selected-wallet": ["multiwallet.selectedWallet"],
   "hgl:legal-accepted": ["legal_accepted_v1"],
@@ -109,11 +138,26 @@ export function canPersist(): boolean {
   }
 }
 
+/** Parses a stored value as a list of strings, or yields nothing when it is not one. */
+function readStringList(raw: string): string[] | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) return null;
+    return parsed as string[];
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Reads a key, migrating from any legacy spelling on the way.
  *
  * The migration writes the new key as a side effect of the first read, so it happens once per visitor and
  * needs no separate step or version marker.
+ *
+ * A key with more than one legacy spelling merges them rather than adopting whichever is found first: the
+ * recents lists were per-surface and are being unified, so taking one would silently discard the other's
+ * history. Non-list values still fall back to first-found, which is the right answer for every other key.
  */
 export function readStored(key: string): string | null {
   const s = store();
@@ -122,19 +166,36 @@ export function readStored(key: string): string | null {
     const current = s.getItem(key);
     if (current !== null) return current;
 
-    for (const legacy of LEGACY_KEYS[key] || []) {
+    const legacyKeys = LEGACY_KEYS[key] || [];
+    const lists: string[][] = [];
+    let firstFound: string | null = null;
+    for (const legacy of legacyKeys) {
       const old = s.getItem(legacy);
-      if (old !== null) {
-        try {
-          s.setItem(key, old);
-        } catch {
-          // Migration is best-effort: the value is still returned, so a failed copy costs a re-migration
-          // rather than the data.
-        }
-        return old;
-      }
+      if (old === null) continue;
+      if (firstFound === null) firstFound = old;
+      const parsed = readStringList(old);
+      if (parsed) lists.push(parsed);
     }
-    return null;
+    if (firstFound === null) return null;
+
+    let adopted = firstFound;
+    if (lists.length > 1) {
+      const merged: string[] = [];
+      for (const list of lists) {
+        for (const entry of list) {
+          if (!merged.includes(entry)) merged.push(entry);
+        }
+      }
+      if (merged.length > 0) adopted = JSON.stringify(merged);
+    }
+
+    try {
+      s.setItem(key, adopted);
+    } catch {
+      // Migration is best-effort: the value is still returned, so a failed copy costs a re-migration
+      // rather than the data.
+    }
+    return adopted;
   } catch {
     return null;
   }

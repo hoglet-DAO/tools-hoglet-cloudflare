@@ -9,6 +9,7 @@ import {
 } from "@/components/governance/GovernanceAuditContext";
 import { GovernanceAuditPanel, FlowPanel } from "@/components/governance/GovernanceAuditPanel";
 import { LifecycleRunner, type GovernanceMode } from "@/components/governance/LifecycleRunner";
+import { VaultPackButton } from "@/components/ai/VaultPackButton";
 import { DAO_CONTRACTS_VAULT } from "@/config/contracts";
 
 const VAULT_NOT_PUBLISHED = DAO_CONTRACTS_VAULT === "0x1";
@@ -43,13 +44,18 @@ function GovernanceShell({ mode }: { mode: GovernanceMode }) {
       {/* Masthead. The two modes are separate surfaces on purpose: a module the factory owns and an
           account the visitor owns are different risk models, and one page listing both taught people
           to expect the same guarantees from either. */}
-      <header className="mb-5">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-          {mode === "contracts" ? t("hubContractsTitle") : t("hubAccountsTitle")}
-        </h1>
-        <p className="mt-1.5 text-sm text-gray-400 max-w-2xl">
-          {mode === "contracts" ? t("hubContractsSubtitle") : t("hubAccountsSubtitle")}
-        </p>
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            {mode === "contracts" ? t("hubContractsTitle") : t("hubAccountsTitle")}
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-400 max-w-2xl">
+            {mode === "contracts" ? t("hubContractsSubtitle") : t("hubAccountsSubtitle")}
+          </p>
+        </div>
+        {/* The pack describes the factory itself — lifecycle, risk-tagged entries, invariants — so it
+            belongs on both surfaces: contracts deploys through it, accounts negotiates with it. */}
+        <VaultPackButton />
       </header>
 
       {VAULT_NOT_PUBLISHED && (

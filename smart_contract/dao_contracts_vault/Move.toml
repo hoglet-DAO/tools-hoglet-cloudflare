@@ -8,7 +8,7 @@ version = "1.0.0"
 RENOUNCE = "0xe799069a01bcb4e79a714d685a0fa850e644d9b0d973844ad37dd46b543570c9"
 # Package address = Resource Account derived from RENOUNCE + deploy seed.
 # Verified on chain: this is the account that hosts `dao_contracts_vault::vault`.
-dao_contracts_vault = "0xcaf5cab2ae67ba5e86aba32506282a2adf3cddcc452b15797382b1b52f37fcb3"
+dao_contracts_vault = "0x06dc465fc9c70df95df1e1c0b1fb44d72d70a2f0479dd8ee8158e79e8a6f171a"
 # The admin named address used by publisher::init_module (must be the RA creator).
 admin = "0xe799069a01bcb4e79a714d685a0fa850e644d9b0d973844ad37dd46b543570c9"
 

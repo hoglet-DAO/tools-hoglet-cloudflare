@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useSupraWallet } from "@/context/SupraWalletContext";
+import { Link } from "@/i18n/navigation";
 import { useGovernanceAudit, type GovernanceVerdict } from "@/hooks/features/governance/useGovernanceAudit";
 import { STATUS_META, STAGE_KEY } from "@/components/governance/statusMeta";
 import { sameAddress } from "@/lib/governance/offerChallenge";
@@ -188,13 +189,17 @@ export function ContractGovernanceModal({
                 : t("interactorGovernanceGovernedHint")}
             </p>
 
-            <a
-              href="/en/governance"
+            {/*
+              Locale-aware Link, not a raw `/en/deploy` href: the hardcoded prefix sent every non-English
+              visitor back to the English surface, which the nav had just stopped doing.
+            */}
+            <Link
+              href="/deploy"
               className="inline-flex items-center gap-1.5 text-[11px] font-bold text-cyan-300 hover:underline"
             >
               {t("interactorGovernanceOpen")}
               <ExternalLink className="h-3 w-3" />
-            </a>
+            </Link>
               </>
             )}
           </div>

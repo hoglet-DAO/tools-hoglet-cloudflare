@@ -83,12 +83,14 @@ export default function BentoHome() {
           </div>
         </motion.div>
 
-        {/* Keyless Contract Vault card — the vault owns these modules, a chosen admin decides. */}
+        {/* Deploy card — the vault owns these modules, a chosen admin decides. The title is the action
+            rather than the product: someone who has never heard of the vault still knows what
+            "deploy a contract" means, and the sentence underneath is what makes this one different. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
-          onClick={() => router.push("/governance")}
+          onClick={() => router.push("/deploy")}
           className="group relative rounded-3xl bg-zinc-900/40 border border-white/10 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all duration-500 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col justify-between"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -97,9 +99,9 @@ export default function BentoHome() {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-emerald-500/20">
               <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Keyless Contract Vault</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Deploy a contract</h2>
             <p className="text-sm sm:text-base text-gray-400 font-medium">
-              Deploy a module with no key, hand control to any address, or renounce it forever.
+              A module with no key at all. Hand control to any address, or renounce it forever.
             </p>
             <div className="flex flex-wrap gap-2 mt-4">
               {["Keyless Deploy", "Delegate", "Renounce"].map((tag) => (
@@ -192,24 +194,29 @@ export default function BentoHome() {
           </div>
         </motion.div>
 
-        {/* Utilities Card (Coming Soon) */}
+        {/* Move Scripts Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className="md:col-span-2 rounded-3xl bg-black/40 border border-white/5 overflow-hidden flex flex-col md:flex-row items-center p-6 sm:p-8 gap-4 sm:gap-8 relative text-center md:text-left"
+          onClick={() => router.push("/scripts")}
+          className="group relative rounded-3xl bg-zinc-900/40 border border-purple-500/20 overflow-hidden cursor-pointer hover:border-purple-500/60 transition-all duration-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col justify-between"
         >
-          <div className="flex-1">
-            <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
-              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
-              <h3 className="text-lg sm:text-xl font-bold text-white">More Tools Coming Soon</h3>
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+          <div className="p-6 sm:p-8 relative z-10">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-purple-500/20">
+              <Code2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <p className="text-xs sm:text-sm text-gray-500">We are continuously expanding the Hoglet Suite. Faucet, Data Indexers, and ABI code generators are on the roadmap.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 sm:mb-3">Move Scripts</h2>
+            <p className="text-sm sm:text-base text-gray-400 font-medium">
+              Write, compile, and execute atomic Move scripts directly on-chain with your wallet.
+            </p>
           </div>
-          
-          <div className="shrink-0 flex gap-4 opacity-30 pointer-events-none mt-2 md:mt-0">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Blocks className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+
+          <div className="p-6 sm:p-8 relative z-10 flex justify-end">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-all duration-300 group-hover:scale-110">
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors" />
             </div>
           </div>
         </motion.div>

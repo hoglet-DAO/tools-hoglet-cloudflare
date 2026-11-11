@@ -36,6 +36,7 @@ export function WorkspaceActions({
   onOverrideSizeCheckChange,
   onCopyAiPrompt,
   copiedAi,
+  rememberedBytes = null,
 }: {
   t: any;
   compiling: boolean;
@@ -46,6 +47,13 @@ export function WorkspaceActions({
   testResult: TestSummary | null;
   /** Comment-stripped source size, a live proxy for the package the compile will build. */
   sourceBytes: number;
+  /**
+   * A package size the service already measured for these exact sources, or null if it never has.
+   *
+   * Shown in preference to `sourceBytes` when present: it is a real measurement rather than a proxy for one,
+   * and the source figure runs about three times too high.
+   */
+  rememberedBytes?: number | null;
   onCompile: () => void;
   onTest: () => void;
   onImport: (files: FileList | null, kind: "folder" | "files") => void;
@@ -62,8 +70,11 @@ export function WorkspaceActions({
   const fileInput = useRef<HTMLInputElement>(null);
 
   // The compiled size the service reported is authoritative; the source estimate stands in until a compile.
+// Between the two sits a measurement from an earlier visit: not authoritative for the current compile, but a
+// real number rather than a proxy, so it wins over the source figure and loses only to a fresh compile.
   const compiledSize = result?.ok && typeof result.sizeBytes === "number" ? result.sizeBytes : null;
-  const shownSize = compiledSize ?? sourceBytes;
+  const measuredSize = compiledSize == null ? rememberedBytes : null;
+  const shownSize = compiledSize ?? measuredSize ?? sourceBytes;
   const overSize = shownSize > MAX_PACKAGE_BYTES;
   const sizeCls = overSize
     ? "border-amber-400/30 bg-amber-500/10 text-amber-300"
@@ -172,17 +183,28 @@ export function WorkspaceActions({
       )}
 
       {/*
-        A live size readout. It is the comment-stripped source, not the compiled artifact — the exact size
-        only comes back from the service — but it tracks the part that grows with the code, so a package
-        visibly near the cap is flagged before a compile rather than after one.
+        A live size readout with two distinct meanings, so the label and the tooltip both switch once the
+        service has reported a real size. Before a compile it is the comment-stripped source: a *ceiling*
+        proxy, not an estimate, since the compiled artifacts are routinely a fraction of it (the compiler
+        drops indentation and resolves every name and type to an index). Comparing that source figure to
+        MAX_PACKAGE_BYTES therefore warns early rather than accurately, which is the safe direction.
+        After a compile the number is the service's own and is exact, so the caveat would be a lie.
       */}
       <span
-        title={t("workspaceCodeSizeHint", { max: formatBytes(MAX_PACKAGE_BYTES) })}
+        title={
+          compiledSize != null
+            ? t("workspacePackageSizeHint")
+            : measuredSize != null
+              ? t("workspacePackageSizeMeasuredHint")
+              : t("workspaceCodeSizeHint", { max: formatBytes(MAX_PACKAGE_BYTES) })
+        }
         className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${sizeCls}`}
       >
         {compiledSize != null
           ? t("workspacePackageSize", { size: formatBytes(shownSize) })
-          : t("workspaceCodeSize", { size: formatBytes(shownSize) })}
+          : measuredSize != null
+            ? t("workspacePackageSizeMeasured", { size: formatBytes(shownSize) })
+            : t("workspaceCodeSize", { size: formatBytes(shownSize) })}
       </span>
 
       <div className="ml-auto flex items-center gap-1.5">

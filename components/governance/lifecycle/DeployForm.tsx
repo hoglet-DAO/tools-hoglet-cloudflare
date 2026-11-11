@@ -57,7 +57,10 @@ export function DeployForm({
   }, [rpcUrl, target, isFactoryManaged, isPending, deployedTarget]);
 
   const adminOk = /^0x[0-9a-fA-F]{1,64}$/.test(admin.trim()) && admin.trim() !== "0x0";
-  const ready = isUsableHex(metadata) && modules.length > 0 && (targetTaken || immutable || adminOk);
+  // The wallet is needed to *send* the deployment, not to build it: the editor, the compiler and the
+  // derived target all work without one, so the form renders and only its button stays disabled.
+  const ready =
+    !!wallet && isUsableHex(metadata) && modules.length > 0 && (targetTaken || immutable || adminOk);
 
   const notReadyReason =
     !targetTaken && !immutable && !adminOk
@@ -76,6 +79,10 @@ export function DeployForm({
       pending={isPending}
       cta={targetTaken ? t("upgradeFormCta") : t("deployFormCta")}
       reason={notReadyReason}
+      // No button without a wallet: this form deploys a build, and the build's own action row - higher up,
+      // in the workspace - already carries the Connect Wallet that unblocks it. A second one here would be
+      // the same call to action twice on one screen.
+      hideCta={!wallet}
       onSubmit={async () => {
         if (targetTaken) {
           await run("upgrade_contract", [target, metadata, modules.map((m) => m.hex)], {
@@ -160,7 +167,19 @@ export function DeployForm({
         </div>
       )}
 
-      {!targetTaken && (
+      {/*
+        The deploy configuration - immutable toggle and owner - only exists once there is a wallet.
+
+        Without one there is no deploy to configure, and showing "who will own this contract" next to a
+        Connect Wallet button invites the visitor to answer a question they cannot act on yet: the address
+        field in particular reads as something to fill in, when the only thing that belongs in it is a
+        decision the connection has not made possible. Unconnected, the form ends at the call to connect.
+
+        Hidden rather than disabled: a greyed-out owner field is still a form to fill in, and the point is
+        that there is nothing here to fill in yet. `!targetTaken` still applies, because an existing
+        contract is upgraded rather than re-owned.
+      */}
+      {wallet && !targetTaken && (
         <>
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 select-none">
             <input

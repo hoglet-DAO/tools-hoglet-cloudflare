@@ -89,7 +89,16 @@ export function LifecycleRunner({
     }
   };
 
-  if (!wallet) {
+  /*
+    The account surface is nothing but signing, so it asks for a wallet up front rather than presenting
+    forms whose every action would fail.
+
+    The contract surface is not: its workspace compiles Move locally and the compile service needs no
+    signer, so a wallet is only required at the moment an action is actually sent. Walled off, "Deploy a
+    contract" was unreadable until a wallet was connected, which hid the editor, the bytecode view and the
+    whole point of the page behind an account the visitor may not even have yet.
+  */
+  if (!wallet && mode === "accounts") {
     return (
       <Shell>
         <p className="text-sm text-gray-400">{t("runnerConnectWallet")}</p>

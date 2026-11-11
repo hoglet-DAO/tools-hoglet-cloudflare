@@ -52,16 +52,19 @@ const check = (n, c, d) => {
 };
 
 console.log("the workspace does not clear artifacts it did not supply:");
-const rawCalls = workspace.match(/onArtifacts\(null\)/g) || [];
-check("exactly one raw onArtifacts(null) call exists", rawCalls.length === 1, `found ${rawCalls.length}`);
+// Matched through `onArtifactsRef.current(null)`, not `onArtifacts(null)`: the call goes through a ref so
+// the invalidator cannot close over a stale prop. The invariant is the same, and the spelling matters —
+// these patterns silently stopped matching when the ref landed, which is a failing test that means nothing.
+const rawCalls = workspace.match(/onArtifactsRef\.current\(null\)/g) || [];
+check("exactly one raw artifact-clear call exists", rawCalls.length === 1, `found ${rawCalls.length}`);
 
 const guardIdx = workspace.indexOf("const invalidateOwnArtifacts");
-const callIdx = workspace.indexOf("onArtifacts(null)");
+const callIdx = workspace.indexOf("onArtifactsRef.current(null)");
 check("the only raw call is inside the guard", guardIdx >= 0 && callIdx > guardIdx,
   `guard at ${guardIdx}, call at ${callIdx}`);
 
 check("the guard checks ownership before clearing",
-  /invalidateOwnArtifacts[\s\S]{0,200}suppliedArtifacts\.current[\s\S]{0,80}onArtifacts\(null\)/.test(workspace),
+  /invalidateOwnArtifacts[\s\S]{0,200}suppliedArtifacts\.current[\s\S]{0,80}onArtifactsRef\.current\(null\)/.test(workspace),
   "no suppliedArtifacts check found");
 
 check("every invalidation site goes through the guard",

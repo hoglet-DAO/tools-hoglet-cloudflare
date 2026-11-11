@@ -1,46 +1,40 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Search, Coins, ShieldAlert, Loader2, ArrowRight, Info, X, ExternalLink, Clock, Copy, Check } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useTokenInspector } from "@/hooks/features/contracts/useTokenInspector";
+import { useAddressSubject } from "@/hooks/features/useAddressSubject";
 import { TechnicalIdentifierBlock } from "./inspector/TechnicalIdentifierBlock";
-import { readJson, writeJson, STORAGE_KEYS } from "@/lib/storage";
+import { STORAGE_KEYS } from "@/lib/storage";
+import { shortenAddress } from "@/utils/formatters";
 import { InfoModal } from "./inspector/InfoModal";
 import { TokenCard } from "./inspector/TokenCard";
 import { CapabilityCard } from "./inspector/CapabilityCard";
-import { InspectorSearchBar } from "./inspector/InspectorSearchBar";
-import { routing } from "@/i18n/routing";
+import { SubjectBar, localeHref } from "./contracts/SubjectBar";
 
 export default function Inspector() {
-  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const { isScanning, hasScanned, error, ownedTokens, adminCapabilities, renouncedTokens, scanAccount, network } = useTokenInspector();
 
-  useEffect(() => {
-    // Its own key, not the interactor's. The two lists hold different things — tokens here, contracts
-    // there — and sharing one key meant each feature offered the other's entries as suggestions.
-    setRecentSearches(readJson<string[]>(STORAGE_KEYS.inspectorRecent, []));
-    // Auto-scan from URL parameter
-    const queryAddress = searchParams.get('address');
-    if (queryAddress) {
-      setSearchQuery(queryAddress);
-      scanAccount(queryAddress);
-    }
-  }, []); // Run only on mount
+  /**
+   * The address being inspected, owned by the shared hook: it reads the deep link, writes it back
+   * without disturbing the other query parameters, and keeps the recents list.
+   */
+  const { address: searchQuery, setAddress: setSearchQuery, submit: commit, recents: recentSearches } =
+    useAddressSubject({
+      storageKey: STORAGE_KEYS.contractRecent,
+      onCommit: scanAccount,
+    });
 
   const shortenType = (typeStr: string) => {
     if (typeStr?.includes('::')) {
       const parts = typeStr.split('::');
-      const address = parts[0];
-      const shortAddress = address.length > 12 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
-      return `${shortAddress}::${parts.slice(1).join('::')}`;
+      return `${shortenAddress(parts[0])}::${parts.slice(1).join('::')}`;
     }
     return typeStr.length > 20 ? `${typeStr.slice(0, 8)}...${typeStr.slice(-6)}` : typeStr;
   };
@@ -69,58 +63,45 @@ export default function Inspector() {
     return `https://suprascan.io/fa/${target}`;
   };
 
-  const handleInspect = (eOrQuery?: React.FormEvent | string) => {
-    if (eOrQuery && typeof eOrQuery !== "string" && 'preventDefault' in eOrQuery) {
-      eOrQuery.preventDefault();
-    }
+  /**
+   * Submits an address to inspect.
+   *
+   * Two things happen in one place now. The query is truncated to its address segment first, because a
+   * full struct path (`0x...::DAWGZ::DAWGZ`) is a type, not an account — and `commit` then validates,
+   * records the recency, writes `?address` while leaving `?network` alone, and calls `onCommit` to
+   * scan. The old version rebuilt the whole query string on every submit, which is what dropped
+   * `?network` and silently moved the app between networks.
+   */
+  const handleInspect = useCallback(
+    (eOrQuery?: React.FormEvent | string) => {
+      if (eOrQuery && typeof eOrQuery !== "string" && "preventDefault" in eOrQuery) {
+        eOrQuery.preventDefault();
+      }
+      const raw = typeof eOrQuery === "string" ? eOrQuery : searchQuery;
+      const truncated = raw.includes("::") ? raw.split("::")[0] : raw;
+      commit(truncated);
+    },
+    [commit, searchQuery]
+  );
 
-    let query = typeof eOrQuery === "string" ? eOrQuery.trim() : searchQuery.trim();
-    
-    // Automatically truncate if it's a full struct path (e.g. 0x...::DAWGZ::DAWGZ)
-    if (query.includes("::")) {
-      query = query.split("::")[0];
-    }
-    
-    if (!query) {
-      return;
-    }
-    
-    setSearchQuery(query);
-    scanAccount(query);
-
-    // Update URL without full page reload
-    router.replace(`${pathname}?address=${query}`, { scroll: false });
-
-    // Guardar en el historial
-    setRecentSearches(prev => {
-      const newRecent = [query, ...prev.filter(q => q !== query)].slice(0, 5);
-      writeJson(STORAGE_KEYS.inspectorRecent, newRecent);
-      return newRecent;
-    });
-  };
-
-  const handleRecentClick = (query: string) => {
-    setSearchQuery(query);
-    scanAccount(query);
-    
-    router.replace(`${pathname}?address=${query}`, { scroll: false });
-
-    setRecentSearches(prev => {
-      const newRecent = [query, ...prev.filter(q => q !== query)].slice(0, 5);
-      writeJson(STORAGE_KEYS.inspectorRecent, newRecent);
-      return newRecent;
-    });
-  };
+  // A recent is already a plain address, so it goes straight through.
+  const handleRecentClick = useCallback(
+    (query: string) => {
+      commit(query);
+    },
+    [commit]
+  );
 
   const handleGoToInteractor = (resourcePath: string) => {
     const parts = resourcePath.split("::");
     if (parts.length >= 2) {
       const contractAddress = parts[0];
       const moduleName = parts[1];
-      
+
       const locale = pathname.split('/')[1];
-      const prefix = locale && (routing.locales as readonly string[]).includes(locale) ? `/${locale}` : '';
-      router.push(`${prefix}/interactor?address=${contractAddress}&module=${moduleName}`);
+      router.push(
+        `${localeHref(locale, "interactor")}?address=${contractAddress}&module=${moduleName}`
+      );
     }
   };
 
@@ -149,13 +130,15 @@ export default function Inspector() {
         </div>
       </motion.div>
 
-      <InspectorSearchBar 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        handleInspect={handleInspect}
+      <SubjectBar
+        mode="audit"
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onSubmit={() => handleInspect()}
         isScanning={isScanning}
-        recentSearches={recentSearches}
-        handleRecentClick={handleRecentClick}
+        recents={recentSearches}
+        onPickRecent={handleRecentClick}
+        placeholder="Enter Token Address..."
       />
 
       {/* Error State */}

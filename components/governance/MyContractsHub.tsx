@@ -9,6 +9,7 @@ import {
   useGovernanceAuditContext,
 } from "@/components/governance/GovernanceAuditContext";
 import { LifecycleRunner } from "@/components/governance/LifecycleRunner";
+import { VaultPackButton } from "@/components/ai/VaultPackButton";
 import { sameAddress } from "@/lib/governance/offerChallenge";
 import { getExplorerUrl } from "@/utils/supra/explorerUtils";
 import { useNetwork } from "@/context/NetworkContext";
@@ -136,12 +137,17 @@ function MyContractsShell() {
 
   return (
     <section className="relative px-4 py-8 sm:px-6 sm:py-10 max-w-6xl mx-auto w-full">
-      <header className="mb-5">
-        <h1 className="flex items-center gap-2.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-          <Boxes className="w-6 h-6 text-cyan-300" />
-          {t("myContractsTitle")}
-        </h1>
-        <p className="mt-1.5 text-sm text-gray-400 max-w-2xl">{t("myContractsSubtitle")}</p>
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2.5 text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <Boxes className="w-6 h-6 text-cyan-300" />
+            {t("myContractsTitle")}
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-400 max-w-2xl">{t("myContractsSubtitle")}</p>
+        </div>
+        {/* A list of deployments is exactly what an agent needs wrapped in context before touching any
+            of them: the pack carries the lifecycle, status codes and the irreversible-entry warnings. */}
+        <VaultPackButton />
       </header>
 
       {!wallet ? (
@@ -177,7 +183,7 @@ function MyContractsShell() {
               <div className="px-1 py-3">
                 <p className="text-[11px] leading-relaxed text-gray-500">{t("myContractsEmpty")}</p>
                 <Link
-                  href="/governance"
+                  href="/deploy"
                   className="mt-2 inline-block text-[11px] font-bold text-cyan-300 hover:underline"
                 >
                   {t("myContractsGoDeploy")}

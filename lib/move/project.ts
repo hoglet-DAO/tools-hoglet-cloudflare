@@ -753,6 +753,25 @@ export function projectFromFiles(files: ImportedFile[], fallbackName?: string): 
   const depth = (p: string) => norm(p).split("/").length;
 
   /**
+   * A local `move build` writes a copy of every source under `build/<Package>/sources/`. Those copies are
+   * artifacts, not sources: importing them registers each module twice (or shadows the real file), and the
+   * package stops compiling after an import that looked complete. This is common because people compile
+   * locally before deploying, so the folder arrives with a `build/` next to `sources/`.
+   *
+   * Only checked BEFORE the first `sources/` segment: Move's artifacts always sit ahead of the sources
+   * tree (`build/<Package>/sources/...`), while a legitimate module folder that happens to be called
+   * `build` under `sources/` still survives. Excluded silently rather than reported as skipped — they are
+   * artifacts the user did not lose, and a wall of "skipped" would read as a broken import.
+   */
+  const isBuildArtifact = (p: string) => {
+    const segments = norm(p).split("/").map((s) => s.toLowerCase());
+    const buildAt = segments.indexOf("build");
+    if (buildAt < 0) return false;
+    const sourcesAt = segments.indexOf("sources");
+    return sourcesAt < 0 || buildAt < sourcesAt;
+  };
+
+  /**
    * The manifest, chosen by depth rather than by pick order.
    *
    * A folder can carry more than one `Move.toml` — a vendored dependency, a nested example — and `find`
@@ -797,6 +816,8 @@ export function projectFromFiles(files: ImportedFile[], fallbackName?: string): 
   for (const file of files) {
     const raw = norm(file.relativePath || file.name || "");
     if (!raw || baseName(raw) === "Move.toml") continue;
+    // Local build output, not source: see `isBuildArtifact`.
+    if (isBuildArtifact(raw)) continue;
     if (!/\.move$/i.test(raw)) continue;
     // A source belonging to a sibling package is not part of this one. Left out rather than reported: a
     // parent folder full of packages would otherwise produce a wall of "skipped" for files that are fine.
