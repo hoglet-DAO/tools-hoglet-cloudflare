@@ -41,6 +41,7 @@ Allow: /
 # https://llmstxt.org/
 # https://tools.hoglet.xyz/llms.txt
 # https://tools.hoglet.xyz/llms-full.txt
+# https://tools.hoglet.xyz/vault.txt
 `;
 
 export async function GET() {

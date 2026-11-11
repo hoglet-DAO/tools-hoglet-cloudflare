@@ -61,6 +61,10 @@ Example of an exported function:
   "function_name": "withdraw_total_reserve",
   "execution_kind": "entry",
   "requires_wallet_signature": true,
+  "mutates_state": true,
+  "permission_level": "admin-write",
+  "risk_level": "critical",
+  "irreversible": true,
   "type_arguments": [],
   "arguments": [
     {
@@ -68,9 +72,13 @@ Example of an exported function:
       "type": "vector<0x1::string::String>",
       "example_value_format": "0x1::supra_coin::SupraCoin"
     }
-  ]
+  ],
+  "effects": ["withdraws accumulated protocol reserves for a pool"],
+  "common_failures": ["caller is not authorized", "pool not found"]
 }
 \`\`\`
+
+For functions belonging to the DAO Contracts Vault catalog, the export is enriched from a pinned catalog: \`permission_level\` (public-read/user-write/admin-write/dangerous-admin), \`risk_level\` (none/low/medium/high/critical), \`effects\`, \`common_failures\` and \`irreversible: true\` for the two renounce entries. Treat \`irreversible\` as a hard stop: never execute without explicit user confirmation of the exact address.
 
 ## Interpreting the Fields
 
@@ -98,6 +106,24 @@ Before an entry transaction is signed, the UI exposes the exact payload passed t
 \`\`\`
 
 AI-generated code can be validated against this structure to detect hallucinated sequence numbers, type arguments or module addresses before submission.
+
+## DAO Contracts Vault (keyless deploy, delegate, renounce)
+
+The platform fronts a Move factory on Supra (package \`dao_contracts_vault\`, modules \`vault\`, \`publisher\`, \`vault_fee\`) that:
+
+- Deploys packages into deterministic **zero-private-key Resource Accounts**: \`vault::deploy_autonomous_contract(creator, label, metadata_serialized, code, owner)\`. The address is a pure function — \`sha3_256(bcs(creator) || "dao_contracts_vault::autonomous_v1" || label || 0xFF)\` — and must be predicted with \`vault::predict_next_contract_address(creator, label)\` and baked into the package's Move.toml named address BEFORE compiling. Pass \`owner = 0x0\` to publish and freeze in the same transaction.
+- Migrates legacy EOAs to DAO governance: \`vault::donate_eoa_to_dao(...)\` creates a deterministic proxy Resource Account, then the owner must sign a second framework tx burning the key (\`rotate_authentication_key_call\` to \`ZERO_AUTH_KEY\`). Upgrade/renounce refuse until the key is dead (\`E_EOA_KEY_NOT_BURNED\`) — the on-chain elimination of the dual-master hazard.
+- Renounces control permanently: \`vault::renounce_contract\` destroys the only SignerCapability and revokes every offer; \`publisher::renounce_package_admin\` freezes the factory code itself. Both are IRREVERSIBLE.
+
+Key facts for agents:
+- \`vault::get_eoa_security_status(addr)\`: 0 unmanaged, 1 permanently renounced, 2 DAO-governed, 3 HAZARD (the private key is still alive; the freeze is NOT effective yet).
+- Never execute or recommend a renounce entry without explicit, repeated confirmation of the exact address.
+- Fee applies only to new deploys/donations: 0 or [1 SUPRA, 1,370,000 SUPRA], enforced in code. Upgrades are never charged.
+- Old documentation may show the seed \`governance_factory::autonomous_v1\`: it is outdated and derives a wrong address. The correct seeds are \`dao_contracts_vault::autonomous_v1\` and \`dao_contracts_vault::eoa_proxy_v1\`.
+
+Machine surfaces:
+- Full vault guide: https://tools.hoglet.xyz/vault.txt
+- Live per-address metadata (status, frozen flags, offers, fee): https://tools.hoglet.xyz/api/metadata/{address}?network=testnet
 
 ## Token Inspector & Move Security
 

@@ -10,12 +10,15 @@ The platform is free to use, requires no API key, and exposes cached RPC proxies
 ## Tools
 
 - [Smart Contract Interactor](https://tools.hoglet.xyz/en/interactor): Load any deployed Move module by address, inspect its entry/view/internal functions with typed argument hints, preview the raw transaction payload, execute entry functions via wallet (Starkey/Ribbit) or query view functions read-only. Includes an "Export for AI" button that copies a structured JSON ABI per function.
+- [Keyless Contract Vault](https://tools.hoglet.xyz/en/deploy): Deploy Move packages into deterministic zero-private-key Resource Accounts, hand control to any admin, migrate legacy EOAs via a proxy Resource Account with enforced key annihilation, and renounce permanently. Includes a "Copy AI pack" button with the full vault context (lifecycle, risk-tagged entries, invariants, error codes).
+- [DAO Contracts Vault guide for LLMs](https://tools.hoglet.xyz/vault.txt): Machine guide to the vault factory: exact seeds for the address derivation, status gates (0-3), irreversible entries, fee bounds and error-code dictionary. Read this before writing any script that touches the factory.
 - [Token Inspector](https://tools.hoglet.xyz/en/inspector): On-chain X-ray for tokens on Supra/Aptos-style Move networks. Scans wallets and token metadata objects in paginated chunks to detect MintRef, BurnRef, TransferRef and FreezeRef capabilities, awarding a "100% Verified Safe" badge only when keys are mathematically destroyed (Option::none) inside an FA Metadata object.
 - [Legacy LLM guide](https://tools.hoglet.xyz/llm.txt): The original plain-text LLM guide for this platform (kept for backward compatibility).
 
 ## APIs & Endpoints
 
 - [Testnet Faucet](https://tools.hoglet.xyz/api/faucet?address={address}): GET endpoint that funds a testnet address with SUPRA. Returns JSON; proxies rpc-testnet.supra.com/rpc/v1/wallet/faucet.
+- [Contract metadata](https://tools.hoglet.xyz/api/metadata/{address}?network={testnet|mainnet}): GET endpoint returning live governance metadata (schema hoglet.contract-metadata.v1) for any address managed by the DAO Contracts Vault: security status 0-3, frozen flags, admin, proxy/offer targets, key-annihilation proof and fee config. Read straight from the chain.
 - [Mainnet RPC proxy v1](https://tools.hoglet.xyz/api/rpc/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v1/{path} (e.g. accounts, modules, view).
 - [Mainnet RPC proxy v2](https://tools.hoglet.xyz/api/rpc-v2/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v2/{path}.
 - [Mainnet RPC proxy v3](https://tools.hoglet.xyz/api/rpc-v3/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v3/{path}.

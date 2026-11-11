@@ -8,6 +8,8 @@ import { routing } from "@/i18n/routing";
 import { NetworkProvider } from "@/context/NetworkContext";
 import { SupraWalletProvider } from "@/context/SupraWalletContext";
 import { LegalModal } from "@/components/ui/LegalModal";
+import { LegalConsentModal } from "@/components/legal/LegalConsentModal";
+import { Toaster } from "sonner";
 import { WalletNetworkSync } from "@/components/wallet/WalletNetworkSync";
 import "../globals.css";
 
@@ -104,6 +106,8 @@ export default async function LocaleLayout({
             <SupraWalletProvider>
               <WalletNetworkSync />
               <LegalModal />
+              <LegalConsentModal />
+              <Toaster position="bottom-right" richColors theme="dark" />
               {children}
               <footer className="mt-auto py-6 text-center text-[11px] text-zinc-500">
                 Hoglet Tools is a non-custodial infrastructure. Provided As-Is without warranties. <a href="https://github.com/hoglet-DAO/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300 transition-colors">Read our Open-Source Terms</a>.
