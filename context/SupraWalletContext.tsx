@@ -1,8 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useWalletConnection } from '@/hooks/features/wallet/useWalletConnection';
-import { useWalletAuth } from '@/hooks/features/wallet/useWalletAuth';
+import React, { createContext, useContext, useCallback, ReactNode } from 'react';
+import { toast } from 'sonner';
+import { useWalletConnection, useWalletAuth } from '@snabur/hoglet-frontend/wallet';
+import { isUSTimezone, hasUserSignedConsent } from '@/lib/compliance';
 import { useWalletTransactions } from '@/hooks/features/wallet/useWalletTransactions';
 import { WalletType, WalletCapabilities } from '@/utils/types';
 import { WALLET_CONFIGS } from '@snabur/hoglet-frontend/supra';
@@ -49,8 +50,9 @@ interface SupraWalletContextType {
 const SupraWalletContext = createContext<SupraWalletContextType | null>(null);
 
 export const SupraWalletProvider = ({ children }: { children: ReactNode }) => {
-  const connection = useWalletConnection();
   const { network } = useNetwork(); // Get network from context
+  const chainId = network === 'supra-testnet' ? 6 : 8;
+  const connection = useWalletConnection(chainId, network);
   
   // Determine RPC URL.
   // IMPORTANT: always provide a hardcoded fallback. NEXT_PUBLIC_* vars are only
@@ -63,10 +65,27 @@ export const SupraWalletProvider = ({ children }: { children: ReactNode }) => {
   // Derived state for auth/tx hooks
   const currentAccount = connection.accounts[0] || '';
   
+  // Compliance del firmado de bytes crudos: el kit firma, la política vive aquí.
+  const guardRawSigning = useCallback(() => {
+    if (isUSTimezone()) {
+      toast.error('Transaction signing blocked: United States jurisdiction detected.');
+      throw new Error('Access restricted for residents in the United States.');
+    }
+    if (!hasUserSignedConsent(currentAccount)) {
+      toast.error('Jurisdiction certification required before executing transactions.');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-legal-consent-modal'));
+      }
+      throw new Error('Please sign the jurisdiction compliance certification to proceed.');
+    }
+  }, [currentAccount]);
+
   const auth = useWalletAuth(
     connection.provider,
     connection.selectedWallet,
-    currentAccount
+    currentAccount,
+    chainId,
+    { beforeSignRaw: guardRawSigning }
   );
   
   const transactions = useWalletTransactions(
