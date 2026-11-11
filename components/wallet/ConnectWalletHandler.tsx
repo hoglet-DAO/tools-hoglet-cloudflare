@@ -14,7 +14,7 @@ import { StatusView } from './StatusView';
 
 // Import new hooks
 import { useWalletConnectFlow } from '@/hooks/features/wallet/useWalletConnectFlow';
-import { useWalletModalState } from '@/hooks/features/wallet/useWalletModalState'; // New hook import
+import { useWalletModalState } from '@snabur/hoglet-frontend/wallet'; // New hook import
 
 export interface ConnectWalletHandlerProps {
   onConnect?: (account: string) => void;

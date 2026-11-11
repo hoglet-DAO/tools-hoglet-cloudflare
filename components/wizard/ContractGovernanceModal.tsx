@@ -16,7 +16,7 @@ import { Link } from "@/i18n/navigation";
 import { useGovernanceAudit, type GovernanceVerdict } from "@/hooks/features/governance/useGovernanceAudit";
 import { STATUS_META, STAGE_KEY } from "@/components/governance/statusMeta";
 import { sameAddress } from "@/lib/governance/offerChallenge";
-import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
+import { ZERO_AUTH_KEY } from "@snabur/hoglet-frontend/supra";
 
 /**
  * Asks the DAO contracts vault who actually governs a contract.

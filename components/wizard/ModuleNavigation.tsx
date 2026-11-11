@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ZERO_AUTH_KEY } from "@/utils/supra/constants";
+import { ZERO_AUTH_KEY } from "@snabur/hoglet-frontend/supra";
 import { ContractGovernanceModal } from "@/components/wizard/ContractGovernanceModal";
 
 interface ModuleNavigationProps {

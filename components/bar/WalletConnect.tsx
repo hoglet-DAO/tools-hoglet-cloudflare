@@ -7,8 +7,8 @@ import { useWallet as useWalletAPT } from "@aptos-labs/wallet-adapter-react";
 import { useNetwork } from "@/context/NetworkContext";
 import { useTranslations } from 'next-intl';
 import { ConnectWalletHandler } from '@/components/wallet/ConnectWalletHandler';
-import { useSupraPrice } from '@/hooks/features/token/useSupraPrice';
-import { useSupraName } from '@/hooks/features/wallet/useSupraName';
+import { useSupraPrice } from '@snabur/hoglet-frontend/supra';
+import { useSupraName } from '@snabur/hoglet-frontend/supra';
 
 interface WalletConnectProps {
   // No props needed, it manages its own state via hooks

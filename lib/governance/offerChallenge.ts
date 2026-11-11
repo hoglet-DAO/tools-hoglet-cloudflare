@@ -1,4 +1,4 @@
-import { addressToUint8Array, serializeString, serializeUint64 } from "@/utils/supra/bcs";
+import { addressToUint8Array, serializeString, serializeUint64 } from "@snabur/hoglet-frontend/supra";
 import { bytesToHex } from "@/utils/hex";
 import { trace, traceWarn } from "@/lib/debug";
 
