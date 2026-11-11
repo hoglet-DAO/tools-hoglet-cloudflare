@@ -101,5 +101,5 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   // Excluye assets estáticos, imágenes, fuentes y favicon
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|xml)$).*)'],
 };
