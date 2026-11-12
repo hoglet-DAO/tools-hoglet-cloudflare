@@ -105,7 +105,7 @@ export default function WalletConnect() {
               }`}
             >
               <span className="text-[11px] sm:text-xs text-emerald-400 font-medium whitespace-nowrap">
-                {formatUsd(rawUsd)}
+                {price ? formatUsd(rawUsd) : '—'}
               </span>
             </div>
           </div>
@@ -164,7 +164,7 @@ export default function WalletConnect() {
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Balance</span>
                     <span className="text-xs text-slate-200 font-semibold whitespace-nowrap">
                       {formatSupra(numericBalance)} SUPRA
-                      <span className="text-emerald-400 ml-1.5">{formatUsd(rawUsd)}</span>
+                      <span className="text-emerald-400 ml-1.5">{price ? formatUsd(rawUsd) : '—'}</span>
                     </span>
                   </div>
                 </div>
