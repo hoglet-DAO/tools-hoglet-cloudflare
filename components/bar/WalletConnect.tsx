@@ -160,7 +160,7 @@ export default function WalletConnect() {
                       {copied ? <FaCheck className="text-emerald-400 text-xs" /> : <FaCopy className="text-xs" />}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between pt-0.5 border-t border-slate-800/60 mt-0.5">
+                  <div className="flex md:hidden items-center justify-between pt-0.5 border-t border-slate-800/60 mt-0.5">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Balance</span>
                     <span className="text-xs text-slate-200 font-semibold whitespace-nowrap">
                       {formatSupra(numericBalance)} SUPRA
