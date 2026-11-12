@@ -85,7 +85,7 @@ export default function WalletConnect() {
       {walletAddress ? (
         <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5">
           {/* Balance Pill with USD Expandable */}
-          <div className="relative inline-flex flex-col items-center">
+          <div className="relative hidden md:inline-flex flex-col items-center">
             <div 
               className="group flex items-center justify-center px-3 py-1.5 sm:py-1 min-h-[32px] sm:min-h-[36px] bg-[#0B121C]/80 hover:bg-[#111B2B] rounded-full border border-cyan-500/20 hover:border-cyan-500/40 backdrop-blur-md cursor-pointer transition-colors duration-300 shadow-inner z-10"
               onClick={(e) => { e.stopPropagation(); setShowUsd(!showUsd); }}
@@ -159,6 +159,13 @@ export default function WalletConnect() {
                     >
                       {copied ? <FaCheck className="text-emerald-400 text-xs" /> : <FaCopy className="text-xs" />}
                     </button>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5 border-t border-slate-800/60 mt-0.5">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Balance</span>
+                    <span className="text-xs text-slate-200 font-semibold whitespace-nowrap">
+                      {formatSupra(numericBalance)} SUPRA
+                      <span className="text-emerald-400 ml-1.5">{formatUsd(rawUsd)}</span>
+                    </span>
                   </div>
                 </div>
                 <button
