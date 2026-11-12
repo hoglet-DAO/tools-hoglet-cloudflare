@@ -82,12 +82,12 @@ export async function sendStarkeyTransaction({
   }
 
   // --- REGULAR TRANSACTION LOGIC ---
-  const { SupraClient } = await import('supra-l1-sdk');
+  const { SupraClient, BCS, HexString, TxnBuilderTypes } = await import('supra-l1-sdk');
   const supraClient = await SupraClient.init(rpcUrl);
-  let dynamicGasPrice = 100000;
+  let gasUnitPrice = BigInt(100000);
   try {
-    dynamicGasPrice = Number(await supraClient.getMinGasUnitPrice());
-    console.log("DEBUG - Dynamic Gas Price for Starkey:", dynamicGasPrice);
+    gasUnitPrice = BigInt(await supraClient.getMinGasUnitPrice());
+    console.log("DEBUG - Dynamic Gas Price for Starkey:", gasUnitPrice.toString());
   } catch (e) {
     console.warn("Could not fetch dynamic gas price, falling back to 100k", e);
   }
@@ -98,31 +98,46 @@ export async function sendStarkeyTransaction({
     await provider.changeNetwork({ chainId: chainIdStr });
   }
 
-  const rawTxPayload = [
-    account,
-    0, // sequence number - Starkey handles this usually for non-sponsored
-    moduleAddress,
-    moduleName,
-    functionName,
-    runTimeParams,
-    serializedParams,
-    {},
-  ];
+  // StarKey's `createRawTransactionData` is deprecated: the transaction is built here with the SDK
+  // and handed over as unprefixed hex, which is what the extension validates before prompting.
+  const accountInfo = await supraClient.getAccountInfo(account);
+  const rawTransaction = new TxnBuilderTypes.RawTransaction(
+    TxnBuilderTypes.AccountAddress.fromHex(account),
+    BigInt(accountInfo.sequence_number),
+    new TxnBuilderTypes.TransactionPayloadEntryFunction(
+      TxnBuilderTypes.EntryFunction.natural(
+        `${moduleAddress}::${moduleName}`,
+        functionName,
+        (runTimeParams || []).map((type: string) =>
+          new TxnBuilderTypes.TypeTagParser(type).parseTypeTag()
+        ),
+        serializedParams
+      )
+    ),
+    BigInt(200000),
+    gasUnitPrice,
+    BigInt(Math.floor(Date.now() / 1000) + 600),
+    new TxnBuilderTypes.ChainId(Number(chainIdStr))
+  );
 
-  console.log("DEBUG - Starkey RawTxPayload:", JSON.stringify(rawTxPayload));
+  const data = HexString.fromUint8Array(BCS.bcsToBytes(rawTransaction)).noPrefix();
+  console.log("DEBUG - Sending Starkey transaction, chain", chainIdStr);
 
-  const data = await provider.createRawTransactionData(rawTxPayload);
-  console.log("DEBUG - Starkey Created Data:", data);
-  console.log("DEBUG - Sending Transaction with ChainID:", chainIdStr);
-
-  const txHash = await provider.sendTransaction({
+  const result: any = await provider.sendTransaction({
     data,
     from: account,
     to: moduleAddress,
     chainId: chainIdStr,
     value: '0',
-    maxGasAmount: '200000',
-    gasUnitPrice: dynamicGasPrice.toString(),
+    // Return as soon as the hash exists; the UI reports "submitted", not "executed".
+    options: { waitForTransaction: false },
   });
+
+  // Versions of the extension return a hash, `{ hash }` or an error object.
+  const txHash = typeof result === 'string' ? result : result?.hash ?? result?.txHash;
+  if (!txHash) {
+    const reason = result?.error || result?.message || JSON.stringify(result);
+    throw new Error(`StarKey returned no transaction hash: ${reason}`);
+  }
   return txHash;
 }
