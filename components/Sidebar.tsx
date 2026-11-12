@@ -92,8 +92,8 @@ export default function Sidebar() {
           The standard, kept apart from the tools above and pinned to the bottom.
 
           Apart because it is not a route: it leaves the app for the docs site, and a seventh entry in the
-          list would read as another tool and crowd the mobile bar that shares this array. Pinned because
-          it should be findable without ever being in the way of someone here to deploy.
+          list would read as another tool. Pinned because it should be findable without ever being in the
+          way of someone here to deploy.
         */}
         <div className="mt-auto w-full px-4">
           <a
@@ -128,25 +128,6 @@ export default function Sidebar() {
           </a>
         </div>
       </motion.aside>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-zinc-950/95 backdrop-blur-md border-t border-white/10 z-50 justify-around items-center px-2 pb-safe">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
-                isActive ? item.color : "text-gray-500 hover:text-gray-300"
-              }`}
-            >
-              <item.icon className={`w-5 h-5 ${isActive ? "scale-110" : ""}`} />
-              <span className="text-[10px] font-bold">{t(item.key)}</span>
-            </Link>
-          );
-        })}
-      </nav>
     </>
   );
 }

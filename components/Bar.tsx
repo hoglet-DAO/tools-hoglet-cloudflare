@@ -1,7 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from "react";
-import { AiOutlineClose } from "react-icons/ai";
-import { HiMenuAlt4 } from "react-icons/hi";
+import { useState, useCallback } from "react";
 import { useNetwork } from '@/context/NetworkContext';
 import { useLocale } from 'next-intl';
 
@@ -11,37 +9,18 @@ import NetworkSwitchButton from '@/components/EnvironmentToggleButton';
 // Adapted Components from src/components/bar
 import LanguageSelector from '@/components/bar/LanguageSelector';
 import WalletConnect from '@/components/bar/WalletConnect';
-import MobileMenu from '@/components/bar/MobileMenu';
 import TestnetIndicator from '@/components/bar/TestnetIndicator';
+import { LanguageMenu } from '@snabur/hoglet-frontend/i18n';
 
 export default function Bar() {
-  const [toggleMenu, setToggleMenu] = useState(false);
   const activeLocale = useLocale();
   const [language, setLanguage] = useState(activeLocale);
   const { network } = useNetwork();
-
-  const handleToggleClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); 
-    setToggleMenu((prev) => !prev);
-  };
 
   const handleLanguageChange = useCallback((newLang: string) => {
     setLanguage(newLang);
     // Note: The LanguageSelector component handles routing internally.
     // The useCallback here is for consistency if language state is passed down.
-  }, []);
-
-  // Effect to close menus on outside click
-  useEffect(() => {
-    const closeMenus = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".toggle-menu") && !target.closest(".toggle-button")) {
-        setToggleMenu(false);
-      }
-      // Note: WalletConnect manages its own dropdown, so no need to handle showDisconnect here.
-    };
-    document.addEventListener("click", closeMenus);
-    return () => document.removeEventListener("click", closeMenus);
   }, []);
 
   return (
@@ -55,26 +34,19 @@ export default function Bar() {
             <WalletConnect /> {/* WalletConnect is self-contained */}
           </div>
 
-          {/* Mobile Toggle */}
-          <div className="flex md:hidden w-full justify-between items-center">
+          {/* Móvil: logo (tocar = home, mantener = cambiar red) + idioma + conectar. */}
+          <div className="flex md:hidden w-full items-center justify-between gap-2">
             <NetworkSwitchButton />
-            <button onClick={handleToggleClick} className="text-white toggle-button cursor-pointer">
-              {toggleMenu ? <AiOutlineClose size={28} className="toggle-button" /> : <HiMenuAlt4 size={28} className="toggle-button" />}
-            </button>
+            <div className="flex items-center gap-1 ml-auto">
+              <LanguageMenu placement="down" />
+              <WalletConnect />
+            </div>
           </div>
-
-          {/* Mobile Menu */}
-          <MobileMenu 
-            toggleMenu={toggleMenu}
-            setToggleMenu={setToggleMenu}
-            language={language}
-            setLanguage={handleLanguageChange}
-          />
         </div>
       </header>
 
       {/* Testnet Faucet Banner */}
-      <TestnetIndicator network={network} /> {/* TestnetIndicator is self-contained */}      
+      <TestnetIndicator network={network} /> {/* TestnetIndicator is self-contained */}
     </div>
   );
 }

@@ -184,7 +184,8 @@ export default function WalletConnect() {
           className="group relative flex items-center justify-center gap-2 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full font-semibold text-white text-xs sm:text-sm bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:via-blue-500 hover:to-indigo-500 shadow-[0_0_18px_rgba(6,182,212,0.35)] hover:shadow-[0_0_24px_rgba(6,182,212,0.55)] transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0"
         >
           <FaWallet className="text-sm transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
-          <span>Connect Wallet</span>
+          <span className="hidden sm:inline">Connect Wallet</span>
+          <span className="sm:hidden">Connect</span>
         </button>
       )}
 

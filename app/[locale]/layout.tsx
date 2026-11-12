@@ -54,13 +54,13 @@ export async function generateMetadata({
       title,
       description,
       url,
-      siteName: title,
+      siteName: "Hoglet Tools",
       images: [
         {
-          url: "/og-image.jpg",
+          url: "/og-tools.png",
           width: 1200,
           height: 630,
-          alt: "Supra Interact Preview",
+          alt: "Hoglet Tools — smart contract interactor on Supra",
         },
       ],
       locale,
@@ -70,11 +70,22 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: ["/og-image.jpg"],
+      images: ["/og-tools.png"],
       creator: twitterHandle,
     },
     icons: {
-      icon: "/hoglet.webp",
+      icon: [
+        { url: '/favicon.ico?v=2', sizes: 'any', type: 'image/x-icon' },
+        { url: '/favicon-16x16.png?v=2', sizes: '16x16', type: 'image/png' },
+        { url: '/favicon-32x32.png?v=2', sizes: '32x32', type: 'image/png' },
+        { url: '/icon-192.png?v=2', sizes: '192x192', type: 'image/png' },
+      ],
+      apple: '/apple-touch-icon.png?v=2',
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true },
     },
   };
 }

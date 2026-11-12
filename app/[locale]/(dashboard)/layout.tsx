@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Global Sidebar */}
       <Sidebar />
       
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden pb-16 sm:pb-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Bar />
 
         <div className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10">
