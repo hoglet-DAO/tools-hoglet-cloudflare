@@ -39,6 +39,8 @@ export interface VerifyOutcome {
   ok: boolean;
   error?: string;
   errorCode?: VerifyErrorCode;
+  /** The compile service's HTTP status when it failed, so a busy upstream can map to 503. */
+  upstreamStatus?: number;
   record?: VerificationRecord;
   comparison?: ReturnType<typeof compareModuleBytecode>;
 }
@@ -165,7 +167,7 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
       updatedAt: now,
     };
     await deps.putVerification(env, record);
-    return { ok: false, errorCode: "compile", error: compiled.error, record };
+    return { ok: false, errorCode: "compile", error: compiled.error, upstreamStatus: compiled.status, record };
   }
 
   const onchain = await deps.fetchModuleBytecode(network, address);

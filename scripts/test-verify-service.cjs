@@ -135,10 +135,11 @@ let pkg;
   {
     pkg.sourceDigest = digest;
     const { deps, calls } = makeDeps({
-      compile: async () => ({ ok: false, error: "compiler rejected", modules: [] }),
+      compile: async () => ({ ok: false, error: "compiler rejected", modules: [], status: 503 }),
     });
     const out = await verifyPackage({ ...base, deps });
     check("compile failure is reported", out.ok === false && out.errorCode === "compile", JSON.stringify(out));
+    check("compile failure keeps the upstream status", out.upstreamStatus === 503, JSON.stringify(out));
     check("compile failure stores a failed row and no bundle", calls.records.length === 1 && calls.records[0].status === "failed" && calls.bundles === 0);
   }
 
