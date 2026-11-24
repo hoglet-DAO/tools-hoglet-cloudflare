@@ -176,7 +176,7 @@ CREATE TABLE package_verifications (
   address          TEXT    NOT NULL,  -- lowercase 0x-prefixed
   package_name     TEXT    NOT NULL,
   upgrade_number   INTEGER NOT NULL,
-  status           TEXT    NOT NULL,  -- 'pending' | 'verified' | 'failed'
+  status           TEXT    NOT NULL,  -- 'pending' | 'verified' | 'unreproduced' | 'failed'
   exact_source     INTEGER NOT NULL DEFAULT 0,
   source_digest    TEXT    NOT NULL,  -- from chain, uppercase
   computed_digest  TEXT,              -- uppercase, null if not computed
@@ -304,9 +304,10 @@ dependency sources), optional `framework_commit`.
      `address::name` ids and bytecode in the same order);
    - compare lowercase hex against the on-chain module bytecode;
    - all must match. Record the first differing byte offset for the error report.
-7. **Store.** On success, write `bundle.json` to R2 under its hash, then upsert
-   D1. On failure, write only the D1 `failed` row with the reason; do not store
-   the bundle.
+7. **Store.** When the result is `verified`, or `unreproduced` with an exact
+   source digest, write `bundle.json` to R2 under its hash, then upsert D1. On a
+   plain failure (neither claim holds), write only the D1 `failed` row with the
+   reason; do not store the bundle.
 8. **Return** the state, the per-module hashes, and a link to the source.
 
 The `source_digest` match and the bytecode match are independent. Cases:
@@ -315,7 +316,7 @@ The `source_digest` match and the bytecode match are independent. Cases:
 |---|---|---|
 | match | match | `verified`, `exact_source = 1` |
 | different | match | `verified`, `exact_source = 0` ("equivalent source") |
-| match | no match | `exact_source = 1`, not verified — "source matches the publisher's commitment, bytecode not reproduced (toolchain/dependency drift)" |
+| match | no match | `unreproduced`, `exact_source = 1` — "source matches the publisher's commitment, bytecode not reproduced (toolchain/dependency drift)" |
 | different | no match | `failed` |
 
 The third row is the honest one: it does not call a genuine source fake.
@@ -393,11 +394,11 @@ and the build process are.
 | Threat | Control |
 |---|---|
 | Local file read via `local = "../..."` in an uploaded manifest | Never compile the uploaded manifest. Use the on-chain manifest. Rewrite `local` deps to `deps/<name>` inside the bundle; reject any path that resolves outside it. |
-| SSRF / supply-chain via `git = "http://..."` in an uploaded manifest | Same: the manifest comes from chain. Before compiling, allowlist git hosts to the Supra/Hoglet framework repositories, require `https`, reject private/link-local addresses (the existing `validateFiles` already does the protocol and private-IP checks). |
+| SSRF / supply-chain via `git = "http://..."` in an uploaded manifest | Same: the manifest comes from chain. Before compiling, allow only `https://github.com/` repositories (any repo; the dep is compiled, not executed), require `https`, reject private/link-local addresses (the existing `validateFiles` already does the protocol and private-IP checks), and record every repo and `rev`. |
 | A malicious on-chain manifest (publisher-supplied) | Treat it as untrusted with the same rules. If it cannot be sanitised, refuse to compile and report why. |
 | Zip bomb / path traversal / symlink | Do not accept a zip server-side. Accept the files map that the UI already produces from a folder pick; validate with the existing `validateFiles` path rules; cap total body, files and per-file size. The zip is generated only for download. |
 | Compile starvation (VPS concurrency 1) | Separate rate limit for verification (suggest 3 per IP per 10 min), a per-address daily cap, and a global "one verification compile at a time" gate backed by the `pending` row. Keep the existing 503/retry semantics. Never let a verification job block the IDE: the compile service should expose a priority or a second lane, or the verifier must yield. |
-| Storage abuse | Store only bundles that verified. Private bucket. Per-address cap. No public listing. |
+| Storage abuse | Store only bundles that verified or whose source digest matches the on-chain `source_digest`. Private bucket. Per-address cap. No public listing. |
 | Cache poisoning | Immutable verified rows; the exact-source bundle wins; chain re-check before serving; a new bundle cannot replace an exact row. |
 | Re-verification DoS of a verified package | The cache check returns before compiling. |
 | Token leakage | The compile bearer token stays server-side, as it already does in `/api/move/compile`. |
@@ -516,9 +517,10 @@ Contract the app needs:
    compile. If a second lane is not feasible, have verification yield and return
    `503` rather than queue indefinitely.
 4. Expose `GET /version` with the toolchain version.
-5. Keep the git allowlist enforced on the service too, not only in the app. The
-   app will send framework deps pinned to a commit when it can; the service
-   should refuse anything outside the Supra/Hoglet repositories.
+5. Keep the git allowlist enforced on the service too, not only in the app: only
+   `https://github.com/` repositories, no private/link-local hosts, and record
+   the resolved revision. The app will pin framework deps to a commit when it
+   can; the service should refuse anything outside that rule.
 6. Compile output stays `address::name` plus hex per module. The app compares
    against the chain; the service needs no chain access and no registry logic.
 
