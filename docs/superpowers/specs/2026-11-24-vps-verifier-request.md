@@ -80,3 +80,13 @@ devolviendo `address::name` + hex por módulo, como ahora. La comparación y el
 storage son del lado de la app.
 
 Si algo de esto no es viable, decinos cuál y proponemos el fallback. Gracias.
+
+## Reply from the VPS dev (2026-11-24)
+
+- 1, 2, 4 and 6 are viable. `deps/` already works: the file map is written verbatim and `local` resolves.
+- Exact version: Supra CLI `0.5.0`, toolchain `supra_node_v10.0.6`, compiler commit `19c42ac0`, framework commit `3fecf50d0701f38064faa83c980aabe5c63309fe` (branch `dev`), image `supra-compiler:v10.0.6`.
+- 3: there is one lock; a verify would block the IDE. Use `purpose: "verify"` with a second lane and its own cache, or return 503 when the IDE is busy. Do not share the lock.
+- 5: keep the IDE allowlist. For verify, the app should resolve third-party git deps and send them as `deps/` locals. If git is needed, implement a strict `https://github.com/` URL check (no userinfo/private IP) + a separate cache + `git_deps: [{repo, rev}]`. The current substring filter has a bypass and must be fixed.
+- `purpose: "verify"` is accepted. The 300 s timeout and 5 MB body cap are already in the compose.
+
+App-side response (commit `00357d1`): the verifier sends `purpose: "verify"`, uses `GET /version` when `/compile` omits the version, and rewrites a git dependency to `local = "deps/<name>"` when the submitter provides that tree. The framework stays as the allowlisted git dependency. We start with the 503 fallback; a second lane is operational and needs no app change.
