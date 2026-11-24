@@ -33,6 +33,7 @@ export async function GET(
           name: pkg.name,
           upgradeNumber: pkg.upgradeNumber,
           moduleCount: pkg.modules.length,
+          modules: pkg.modules.map((m) => m.name),
           sourceDigest: pkg.sourceDigest,
           hasChainSource:
             pkg.modules.length > 0 && pkg.modules.every((m) => m.source !== null),

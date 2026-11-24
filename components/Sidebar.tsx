@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Code2, Search, Menu, X, Coins, ShieldCheck, KeyRound, Boxes, BookOpen, ArrowUpRight, Terminal, FileCode2 } from "lucide-react";
+import { Home, Code2, Search, Menu, X, Coins, ShieldCheck, KeyRound, Boxes, BookOpen, ArrowUpRight, Terminal } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -16,7 +16,6 @@ export default function Sidebar() {
     { id: "home", href: "/", icon: Home, key: "navHome", color: "text-white" },
     { id: "interactor", href: "/interactor", icon: Code2, key: "navInteractor", color: "text-amm-pink" },
     { id: "inspector", href: "/inspector", icon: Coins, key: "navInspector", color: "text-cyan-400" },
-    { id: "verify", href: "/verify", icon: FileCode2, key: "navVerify", color: "text-sky-400" },
     // The vault is its own destination because it does a different thing with a different risk than
     // Account Control: it governs modules the vault owns, and the actions it offers are irreversible
     // in one path.

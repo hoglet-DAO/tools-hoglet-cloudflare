@@ -12,6 +12,7 @@ export interface PackageRow {
   name: string;
   upgradeNumber: number;
   moduleCount: number;
+  modules: string[];
   sourceDigest: string;
   hasChainSource: boolean;
   verification: VerificationView | null;

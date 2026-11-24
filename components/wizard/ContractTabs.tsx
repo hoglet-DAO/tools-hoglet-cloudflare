@@ -1,13 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import { Code2, FileCode2, Loader2 } from "lucide-react";
 
 // Subcomponents
 import { ModuleNavigation } from "./ModuleNavigation";
 import { MobileModuleModal } from "./MobileModuleModal";
 import { FunctionSidebar } from "./FunctionSidebar";
 import { FunctionForm } from "./FunctionForm";
+
+/**
+ * CodeMirror and the source viewer are heavy and only needed on the Source
+ * tab, so they stay out of the interactor's initial bundle.
+ */
+const SourceTab = dynamic(() => import("./SourceTab").then((m) => m.SourceTab), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center gap-2 p-6 text-xs text-gray-500">
+      <Loader2 className="h-4 w-4 animate-spin" /> Loading source…
+    </div>
+  ),
+});
 
 interface ContractTabsProps {
   isConnected: boolean;
@@ -51,6 +66,7 @@ export function ContractTabs({
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tab, setTab] = useState<"functions" | "source">("functions");
 
   // Clear selected function if the module changes
   useEffect(() => {
@@ -114,8 +130,33 @@ export function ContractTabs({
           onLoadMoreModules={onLoadMoreModules}
         />
 
-        {/* MAIN CONTENT AREA */}
-        <div className="p-4 sm:p-6 lg:flex lg:gap-8 items-start">
+        <div className="flex items-center gap-1 border-t border-white/5 px-4 py-2.5 sm:px-6">
+          {([
+            { id: "functions" as const, label: "Functions", icon: Code2 },
+            { id: "source" as const, label: "Source", icon: FileCode2 },
+          ]).map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  active
+                    ? "bg-cyan-500/15 text-cyan-200"
+                    : "text-gray-500 hover:bg-white/5 hover:text-gray-200"
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {tab === "functions" ? (
+          <div className="p-4 sm:p-6 lg:flex lg:gap-8 items-start">
           <FunctionSidebar 
             functions={functions}
             selectedFunction={selectedFunction}
@@ -145,7 +186,15 @@ export function ContractTabs({
             result={result}
             error={error}
           />
-        </div>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-6">
+            <SourceTab
+              address={contractAddress ?? ""}
+              moduleName={selectedModule?.abi?.name ?? selectedModule?.name ?? ""}
+            />
+          </div>
+        )}
       </motion.div>
 
       <MobileModuleModal 
