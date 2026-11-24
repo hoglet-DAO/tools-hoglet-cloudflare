@@ -42,6 +42,19 @@ export async function getBundle(env: VerifyEnv, sha: string): Promise<Bundle | n
   }
 }
 
+export const STALE_PENDING_MS = 15 * 60 * 1000;
+
+/** A `pending` row that outlived its request is a crashed job, not a running one. */
+export function isStalePending(record: VerificationRecord, now = Date.now()): boolean {
+  return record.status === "pending" && now - record.updatedAt > STALE_PENDING_MS;
+}
+
+function withStale(record: VerificationRecord): VerificationRecord {
+  return isStalePending(record)
+    ? { ...record, status: "failed", error: "verification did not finish" }
+    : record;
+}
+
 /**
  * Which result may overwrite which.
  *
@@ -99,7 +112,7 @@ export async function getVerification(
   )
     .bind(key.network, key.address, key.packageName, key.upgradeNumber)
     .first();
-  return row ? rowToRecord(row as Row) : null;
+  return row ? withStale(rowToRecord(row as Row)) : null;
 }
 
 export async function listVerifications(
@@ -112,7 +125,7 @@ export async function listVerifications(
   )
     .bind(network, address)
     .all();
-  return (results ?? []).map((row) => rowToRecord(row as Row));
+  return (results ?? []).map((row) => withStale(rowToRecord(row as Row)));
 }
 
 export async function putVerification(env: VerifyEnv, record: VerificationRecord): Promise<void> {

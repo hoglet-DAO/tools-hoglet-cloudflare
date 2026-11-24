@@ -1,7 +1,7 @@
 const path = require("path");
 const { loadTs, makeChecker, report } = require("./load-module.cjs");
 
-const { stableStringify, bundleSha, shouldReplace } = loadTs(
+const { stableStringify, bundleSha, shouldReplace, isStalePending } = loadTs(
   path.join(__dirname, "..", "lib", "verify", "store.ts")
 );
 const { check, state } = makeChecker();
@@ -76,6 +76,13 @@ const reordered = {
   check("verified non-exact + verified exact", shouldReplace(rec("verified", false), rec("verified", true)) === true);
   check("failed + verified", shouldReplace(rec("failed", false), rec("verified", true)) === true);
   check("unreproduced exact + verified exact", shouldReplace(rec("unreproduced", true), rec("verified", true)) === true);
+
+  console.log();
+  console.log("isStalePending:");
+  const pending = { ...rec("pending", false), updatedAt: 1_000 };
+  check("a 15-minute-old pending row is stale", isStalePending(pending, 1_000 + 15 * 60 * 1000 + 1) === true);
+  check("a fresh pending row is not stale", isStalePending(pending, 1_000 + 1_000) === false);
+  check("a verified row is never stale", isStalePending(rec("verified", true), 10 ** 12) === false);
 
   report(state);
 })();
