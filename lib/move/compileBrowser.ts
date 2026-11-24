@@ -232,6 +232,8 @@ async function postToProxy(
     sizeBytes: json.sizeBytes,
     hint: json.hint,
     note: json.note,
+    compilerVersion: json.compilerVersion ?? null,
+    frameworkCommit: json.frameworkCommit ?? null,
     ms: json.ms ?? 0,
     stdout: json.stdout ?? "",
     stderr: json.stderr ?? "",

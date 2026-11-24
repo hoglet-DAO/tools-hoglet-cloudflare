@@ -114,6 +114,10 @@ interface RawCompileResponse {
   hint?: string;
   /** A service note about the choices made — e.g. that `none` publishes without the source map. */
   note?: string;
+  /** The toolchain version that ran, once the service reports it. */
+  compiler_version?: string;
+  /** The framework revision the service used, when it knows it. */
+  framework_commit?: string;
   ms?: number;
   stdout?: string;
   stderr?: string;
@@ -144,6 +148,10 @@ export interface CompileResponse {
   hint?: string;
   /** The service's note about the choices made, surfaced as-is (e.g. `none` is not shown on explorers). */
   note?: string;
+  /** The toolchain version that ran, when the service reports it. */
+  compilerVersion?: string | null;
+  /** The framework revision used, when the service reports it. */
+  frameworkCommit?: string | null;
   ms: number;
   stdout: string;
   stderr: string;
@@ -460,6 +468,8 @@ async function callService(
         sizeBytes: json.size_bytes,
         hint: json.hint,
         note: json.note,
+        compilerVersion: json.compiler_version ?? null,
+        frameworkCommit: json.framework_commit ?? null,
         ms: json.ms ?? 0,
         stdout: json.stdout ?? "",
         stderr: json.stderr ?? "",
