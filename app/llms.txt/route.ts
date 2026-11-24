@@ -13,19 +13,23 @@ The platform is free to use, requires no API key, and exposes cached RPC proxies
 - [Keyless Contract Vault](https://tools.hoglet.xyz/en/deploy): Deploy Move packages into deterministic zero-private-key Resource Accounts, hand control to any admin, migrate legacy EOAs via a proxy Resource Account with enforced key annihilation, and renounce permanently. Includes a "Copy AI pack" button with the full vault context (lifecycle, risk-tagged entries, invariants, error codes).
 - [DAO Contracts Vault guide for LLMs](https://tools.hoglet.xyz/vault.txt): Machine guide to the vault factory: exact seeds for the address derivation, status gates (0-3), irreversible entries, fee bounds and error-code dictionary. Read this before writing any script that touches the factory.
 - [Token Inspector](https://tools.hoglet.xyz/en/inspector): On-chain X-ray for tokens on Supra/Aptos-style Move networks. Scans wallets and token metadata objects in paginated chunks to detect MintRef, BurnRef, TransferRef and FreezeRef capabilities, awarding a "100% Verified Safe" badge only when keys are mathematically destroyed (Option::none) inside an FA Metadata object.
+- [Source Verification](https://tools.hoglet.xyz/en/verify?address={address}): Read the source of a Supra package when it was published with source, or upload the source tree for a package published with \`included_artifacts: none\` and verify it by recompiling and comparing module bytecode. Statuses: \`verified\` (bytecode match), \`unreproduced\` (exact source, bytecode not reproduced), \`failed\`.
 - [Legacy LLM guide](https://tools.hoglet.xyz/llm.txt): The original plain-text LLM guide for this platform (kept for backward compatibility).
 
 ## APIs & Endpoints
 
 - [Testnet Faucet](https://tools.hoglet.xyz/api/faucet?address={address}): GET endpoint that funds a testnet address with SUPRA. Returns JSON; proxies rpc-testnet.supra.com/rpc/v1/wallet/faucet.
 - [Contract metadata](https://tools.hoglet.xyz/api/metadata/{address}?network={testnet|mainnet}): GET endpoint returning live governance metadata (schema hoglet.contract-metadata.v1) for any address managed by the DAO Contracts Vault: security status 0-3, frozen flags, admin, proxy/offer targets, key-annihilation proof and fee config. Read straight from the chain.
+- [Verification packages](https://tools.hoglet.xyz/api/verify/{network}/{address}): GET the packages at an address with their verification state and whether the source is on chain.
+- [Package source](https://tools.hoglet.xyz/api/verify/{network}/{address}/{package}/source): GET the verified or on-chain source files for one package.
+- [Verification bundle](https://tools.hoglet.xyz/api/verify/bundle/{sha256}?format=zip): GET the exact inputs of a verification. \`?format=zip\` returns \`Move.toml\`, \`sources/\`, any \`deps/\` and \`verify.json\` (toolchain, framework commit, hashes, status).
 - [Mainnet RPC proxy v1](https://tools.hoglet.xyz/api/rpc/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v1/{path} (e.g. accounts, modules, view).
 - [Mainnet RPC proxy v2](https://tools.hoglet.xyz/api/rpc-v2/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v2/{path}.
 - [Mainnet RPC proxy v3](https://tools.hoglet.xyz/api/rpc-v3/mainnet/{path}): Cached passthrough to https://rpc-mainnet.supra.com/rpc/v3/{path}.
 - [Testnet RPC proxy v1](https://tools.hoglet.xyz/api/rpc/testnet/{path}): Cached passthrough to https://rpc-testnet.supra.com/rpc/v1/{path}.
 - [Testnet RPC proxy v2/v3](https://tools.hoglet.xyz/api/rpc-v2/testnet/{path}): Same pattern for v2 and v3 under /api/rpc-v2/testnet and /api/rpc-v3/testnet.
 
-Caching: module/ABI reads are cached 1 hour (s-maxage=3600), account resources 10 seconds (s-maxage=10), everything else ~2 seconds.
+Caching: module/ABI reads are cached 1 hour (s-maxage=3600), account resources 10 seconds (s-maxage=10), everything else ~2 seconds. Verification responses are \`Cache-Control: no-store\`; verification reads are public within permitted jurisdictions.
 
 ## Docs
 

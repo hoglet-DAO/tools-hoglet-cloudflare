@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Loader2, Search } from "lucide-react";
 import { useNetwork } from "@/context/NetworkContext";
@@ -9,7 +9,13 @@ import { SourcePanel } from "./SourcePanel";
 import { SubmitSources } from "./SubmitSources";
 import type { PackageDetail, PackageRow, SourceFiles } from "./types";
 
-export function VerifyPage({ initialAddress }: { initialAddress: string }) {
+export function VerifyPage({
+  initialAddress,
+  initialPackage,
+}: {
+  initialAddress: string;
+  initialPackage: string;
+}) {
   const t = useTranslations("Verify");
   const { network } = useNetwork();
   const verifyNetwork =
@@ -24,6 +30,7 @@ export function VerifyPage({ initialAddress }: { initialAddress: string }) {
   const [scanned, setScanned] = useState(false);
   const [loadingPackage, setLoadingPackage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
 
   async function loadList(): Promise<PackageRow[] | null> {
     if (!verifyNetwork) return null;
@@ -56,13 +63,23 @@ export function VerifyPage({ initialAddress }: { initialAddress: string }) {
     setDetail(null);
     setSource(null);
     const rows = await loadList();
-    if (rows) setPackages(rows);
+    if (rows) {
+      setPackages(rows);
+      const wanted = initialPackage ? rows.find((p) => p.name === initialPackage) : null;
+      if (wanted) await open(wanted);
+    }
     setScanned(true);
     setScanning(false);
   }
 
   async function open(pkg: PackageRow) {
     if (!verifyNetwork) return;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("address", address.trim());
+      url.searchParams.set("package", pkg.name);
+      window.history.replaceState(null, "", url.toString());
+    }
     setSelected(pkg.name);
     setLoadingPackage(true);
     setDetail(null);
@@ -93,6 +110,15 @@ export function VerifyPage({ initialAddress }: { initialAddress: string }) {
     const pkg = rows.find((p) => p.name === name);
     if (pkg) await open(pkg);
   }
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    if (initialAddress.trim()) void scan();
+    // scan reads the initial state; re-running it when the function identity
+    // changes would fire a second RPC call for the same link.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">

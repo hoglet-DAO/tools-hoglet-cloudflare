@@ -9,6 +9,7 @@ const ROUTES: Array<{ path: string; priority: number }> = [
   { path: '/interactor', priority: 0.9 },
   { path: '/inspector', priority: 0.8 },
   { path: '/scripts', priority: 0.8 },
+  { path: '/verify', priority: 0.7 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

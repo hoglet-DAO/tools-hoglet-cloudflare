@@ -27,9 +27,19 @@ export async function GET(
   const filename = `${safeName(bundle.package)}-${bundle.upgradeNumber}`;
 
   if (new URL(request.url).searchParams.get("format") === "zip") {
+    const verification = {
+      schema: "hoglet.move-verification.v1",
+      network: bundle.network,
+      address: bundle.address,
+      package: bundle.package,
+      upgradeNumber: bundle.upgradeNumber,
+      ...bundle.verification,
+      bundleSha256: sha256,
+    };
     const entries: ZipEntry[] = [
       { path: "Move.toml", content: bundle.manifest },
       ...Object.entries(bundle.files).map(([path, content]) => ({ path, content })),
+      { path: "verify.json", content: JSON.stringify(verification, null, 2) },
     ];
     const bytes = createZip(entries);
     return new Response(new Blob([bytes.buffer as ArrayBuffer]), {

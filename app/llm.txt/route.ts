@@ -6,6 +6,9 @@ const llmText = `# Supra Smart Contract Interactor - LLM Guide
 This platform is a generic UI interactor for Move smart contracts deployed on the Supra Blockchain. 
 It dynamically fetches the ABI of any Supra contract, parses the functions (Entry, View, and Internal), and provides a user-friendly way for humans to construct and send transactions to their Web3 wallets (e.g., Starkey).
 
+## Source Verification
+The platform can read and verify the source of a deployed Supra package. Open https://tools.hoglet.xyz/en/verify?address={address} (or add \`&package={package}\`) and see whether the source is on chain, verified by recompilation, or still missing. \`verified\` means the compiled bytecode matches the chain; \`unreproduced\` means the source digest matches but the current toolchain did not reproduce the bytecode. Full API: https://tools.hoglet.xyz/llms-full.txt
+
 ## Export for AI Schema
 When a user copies a function's ABI using the "Export for AI" feature, the interactor generates a standardized JSON representation. 
 

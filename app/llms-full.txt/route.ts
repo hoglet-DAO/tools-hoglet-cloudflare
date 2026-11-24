@@ -13,6 +13,7 @@ It dynamically fetches the ABI of any Supra contract, parses the functions (Entr
 Main pages:
 - Interactor: https://tools.hoglet.xyz/en/interactor
 - Inspector: https://tools.hoglet.xyz/en/inspector
+- Source Verification: https://tools.hoglet.xyz/en/verify?address={address}&package={package}
 - Official docs: https://docs.hoglet.xyz/docs/products/inspector
 
 ## Platform Endpoints (no API key required)
@@ -124,6 +125,57 @@ Key facts for agents:
 Machine surfaces:
 - Full vault guide: https://tools.hoglet.xyz/vault.txt
 - Live per-address metadata (status, frozen flags, offers, fee): https://tools.hoglet.xyz/api/metadata/{address}?network=testnet
+
+## Source Verification (Etherscan/Sourcify-style)
+
+Page: https://tools.hoglet.xyz/en/verify?address={address}&package={package}
+
+Supra keeps a package registry at \`0x1::code::PackageRegistry\` on every publishing address. Each \`PackageMetadata\` has:
+- \`source_digest\`: a commitment to the exact source tree.
+- \`manifest\`: the gzipped \`Move.toml\` that was published.
+- \`modules[].source\`: gzipped source when the package was published with \`sparse\` or \`all\`; empty with \`included_artifacts: none\`.
+
+Verification uses two independent claims:
+- \`verified\`: recompiling the source with the recorded toolchain and framework produces the on-chain module bytecode. This is the strong claim.
+- \`exactSource\`: the source tree hashes to the publisher's \`source_digest\`. The publisher supplies that digest and the chain does not recompute it, so it is a commitment, not proof by itself.
+
+Statuses:
+- \`verified\` + \`exactSource: true\` — bytecode and digest match.
+- \`verified\` + \`exactSource: false\` — equivalent source; compiles to the same bytecode but is not byte-identical to the published tree.
+- \`unreproduced\` — digest matches, bytecode does not (toolchain/framework drift, or a missing dependency). This is not "failed".
+- \`failed\` — neither claim holds.
+- no record + \`hasChainSource: true\` — source is on chain but has not been bytecode-verified.
+- no source — nothing to show; a package published with \`none\` needs a submission.
+
+Digest algorithm (same as Move's \`move-package\`):
+1. SHA-256 of every \`.move\` under \`sources/\` and \`scripts/\`, plus \`Move.toml\`, as uppercase hex.
+2. Sort the hashes alphabetically.
+3. Concatenate and SHA-256 again.
+\`tests/\` is only hashed in dev mode, so a normal publish excludes it.
+
+API (reads are public; writes are rate-limited; all verify responses are \`Cache-Control: no-store\`):
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | /api/verify/{network}/{address} | packages: name, upgradeNumber, moduleCount, sourceDigest, hasChainSource, verification |
+| GET | /api/verify/{network}/{address}/{package} | package detail, module names, manifest, verification |
+| GET | /api/verify/{network}/{address}/{package}/source | source files + manifest, origin \`chain\` or \`bundle\` |
+| GET | /api/verify/bundle/{sha256} | the full bundle (files + verification metadata) |
+| GET | /api/verify/bundle/{sha256}?format=zip | \`Move.toml\`, \`sources/\`, \`deps/\`, \`verify.json\` |
+| POST | /api/verify | submit \`{ network, address, package, files, framework_commit? }\`; 3 requests / 10 min / IP |
+
+\`verify.json\` carries \`schema\`, network, address, package, \`upgradeNumber\`, \`status\`, \`exactSource\`, \`sourceDigest\`, \`computedDigest\`, \`compilerVersion\`, \`frameworkRev\`, \`onchainModules\` (module name → SHA-256 of its bytecode) and \`bundleSha256\`.
+
+How an agent or auditor verifies independently:
+1. Fetch the package list and the source route.
+2. Download the bundle zip and read \`verify.json\`.
+3. Recompute the digest from \`Move.toml\` + \`sources/\` (+ \`scripts/\`).
+4. Compile with the recorded toolchain and framework, then compare each module's \`.mv\` to the on-chain bytecode (or to \`onchainModules\`).
+5. If the digest matches but the bytecode does not, report \`unreproduced\`, not fraud: the framework branch or toolchain may have moved.
+
+\`none\` packages: open the page, select the package, upload a folder with \`sources/\` and, if the manifest has third-party git deps, \`deps/<name>/\` trees. The app uses the on-chain \`Move.toml\`; a provided git dep is rewritten to \`local = "deps/<name>"\`. The framework stays as the allowlisted git dependency.
+
+Geoblock: the page and \`/api/verify/*\` inherit the platform's jurisdiction filter. Verification is public within permitted jurisdictions, not globally.
 
 ## Token Inspector & Move Security
 

@@ -69,6 +69,40 @@ const postRoute = loadTs(path.join(__dirname, "..", "app", "api", "verify", "rou
   });
   check("unknown bundle is 404", missing.status === 404, String(missing.status));
 
+  const fakeBundle = {
+    version: 1,
+    network: "mainnet",
+    address: ADDRESS,
+    package: "demo",
+    upgradeNumber: 1,
+    files: { "sources/a.move": "module 0x1::a {}" },
+    manifest: '[package]\nname = "demo"',
+    verification: {
+      status: "verified",
+      exactSource: true,
+      sourceDigest: "A",
+      computedDigest: "A",
+      compilerVersion: "Supra CLI 0.5.0",
+      frameworkRev: null,
+      onchainModules: { a: "b" },
+    },
+  };
+  const sha = "a".repeat(64);
+  env.MOVE_SOURCES.get = async (key) =>
+    key === `bundles/${sha}.json` ? { text: async () => JSON.stringify(fakeBundle) } : null;
+  const zip = await bundleRoute.GET(new Request(`http://x/api/verify/bundle/${sha}?format=zip`), {
+    params: Promise.resolve({ sha256: sha }),
+  });
+  const zipBytes = Buffer.from(await zip.arrayBuffer());
+  check(
+    "zip includes verify.json",
+    zip.status === 200 &&
+      (zip.headers.get("content-type") || "").includes("zip") &&
+      zipBytes.includes("verify.json") &&
+      zipBytes.includes("hoglet.move-verification.v1"),
+    `${zip.status} ${zip.headers.get("content-type")}`
+  );
+
   const health = await healthRoute.GET();
   const healthBody = await health.json();
   check("health reports all three", health.status === 200 && healthBody.compile && healthBody.d1 && healthBody.r2, JSON.stringify(healthBody));
