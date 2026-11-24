@@ -102,6 +102,25 @@ check("rejects a traversing subdir", sanitizeManifest(badSubdir).ok === false);
 
 check("rejects a rev that looks like a flag", sanitizeManifest(BASE.replace('rev = "dev"', 'rev = "-x"')).ok === false);
 
+const gitDep = [
+  "[package]",
+  'name = "amm"',
+  "",
+  "[dependencies.SupraFramework]",
+  'git = "https://github.com/Entropy-Foundation/aptos-core.git"',
+  'rev = "dev"',
+  "",
+  "[dependencies.RazorLibs]",
+  'git = "https://github.com/example/razor.git"',
+  'rev = "main"',
+  'subdir = "libs"',
+  "",
+].join("\n");
+const bundled = sanitizeManifest(gitDep, { providedDeps: ["RazorLibs"] });
+check("bundles a provided git dep as local", bundled.ok && bundled.manifest.includes('local = "deps/RazorLibs"'), bundled.ok && bundled.manifest);
+check("drops the bundled git url", bundled.ok && !bundled.manifest.includes("example/razor"), bundled.ok && bundled.manifest);
+check("keeps a git dep that was not provided", bundled.ok && bundled.manifest.includes("Entropy-Foundation/aptos-core"), bundled.ok && bundled.manifest);
+
 const commit = "a".repeat(40);
 const pinned = sanitizeManifest(BASE, { frameworkCommit: commit });
 check("pins the framework commit", pinned.ok && pinned.manifest.includes(`rev = "${commit}"`), pinned.ok && pinned.manifest);

@@ -82,6 +82,8 @@ export interface ServiceCallOptions {
   includedArtifacts?: IncludedArtifacts;
   /** Ask the service to return artifacts even past its size cap. */
   overrideSizeCheck?: boolean;
+  /** Tells the service this compile is a verification, so it can use a separate lane. */
+  purpose?: "verify";
 }
 
 /**
@@ -364,6 +366,36 @@ export async function compileMove(
   return callService("compile", files, token, opts);
 }
 
+export interface ServiceVersion {
+  compilerVersion: string | null;
+  frameworkCommit: string | null;
+}
+
+/**
+ * The toolchain the service is running.
+ *
+ * Used only when `/compile` did not echo `compiler_version`; the record must
+ * not claim "unknown" when the answer is one request away.
+ */
+export async function fetchCompileVersion(token: string): Promise<ServiceVersion | null> {
+  if (!token) return null;
+  try {
+    const res = await fetch(`${COMPILE_BASE_URL}/version`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as any;
+    return {
+      compilerVersion: json.compiler_version ?? json.compilerVersion ?? null,
+      frameworkCommit: json.framework_commit ?? json.frameworkCommit ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function callService(
   endpoint: "compile" | "test",
   files: Record<string, string>,
@@ -385,6 +417,7 @@ async function callService(
           files,
           ...(opts.includedArtifacts ? { included_artifacts: opts.includedArtifacts } : {}),
           ...(opts.overrideSizeCheck ? { override_size_check: true } : {}),
+          ...(opts.purpose ? { purpose: opts.purpose } : {}),
         }
       : { files }
   );

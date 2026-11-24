@@ -48,7 +48,7 @@ function safeRelative(value: string): boolean {
  */
 export function sanitizeManifest(
   manifest: string,
-  opts: { frameworkCommit?: string } = {}
+  opts: { frameworkCommit?: string; providedDeps?: string[] } = {}
 ): ManifestResult {
   if (opts.frameworkCommit && !/^[0-9a-fA-F]{40}$/.test(opts.frameworkCommit)) {
     return { ok: false, error: "framework commit must be 40 hex characters" };
@@ -88,6 +88,8 @@ export function sanitizeManifest(
       return { ok: false, error: `unsupported line in dependency ${dep}` };
     }
 
+    const bundled = opts.providedDeps?.includes(dep) === true;
+
     const local = code.match(/^(\s*)local\s*=\s*"([^"]*)"\s*$/);
     if (local) {
       const value = local[2];
@@ -104,6 +106,11 @@ export function sanitizeManifest(
 
     const git = code.match(/^(\s*)git\s*=\s*"([^"]*)"\s*$/);
     if (git) {
+      if (bundled) {
+        lines[i] = `${git[1]}local = "deps/${dep}"`;
+        if (!localDeps.includes(dep)) localDeps.push(dep);
+        continue;
+      }
       const value = git[2];
       let url: URL;
       try {
@@ -125,6 +132,10 @@ export function sanitizeManifest(
 
     const rev = code.match(/^(\s*)rev\s*=\s*"([^"]*)"\s*$/);
     if (rev) {
+      if (bundled) {
+        lines[i] = "";
+        continue;
+      }
       const value = rev[2];
       if (value.startsWith("-") || !/^[A-Za-z0-9._/][A-Za-z0-9._/-]*$/.test(value)) {
         return { ok: false, error: `invalid rev in ${dep}` };
@@ -140,6 +151,10 @@ export function sanitizeManifest(
 
     const subdir = code.match(/^(\s*)subdir\s*=\s*"([^"]*)"\s*$/);
     if (subdir) {
+      if (bundled) {
+        lines[i] = "";
+        continue;
+      }
       if (!safeRelative(subdir[2])) {
         return { ok: false, error: `unsafe subdir in ${dep}` };
       }

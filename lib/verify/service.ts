@@ -14,8 +14,9 @@ export interface VerifyDeps {
   compile: (
     files: Record<string, string>,
     token: string,
-    opts: { includedArtifacts?: "none" }
+    opts: { includedArtifacts?: "none"; purpose?: "verify" }
   ) => Promise<CompileResult>;
+  fetchVersion: () => Promise<{ compilerVersion: string | null; frameworkCommit: string | null } | null>;
   getVerification: typeof getVerification;
   putVerification: typeof putVerification;
   putBundle: typeof putBundle;
@@ -51,6 +52,20 @@ function pick(files: Record<string, string>, re: RegExp): Record<string, string>
     if (re.test(path)) out[path] = content;
   }
   return out;
+}
+
+async function resolveVersion(
+  compiled: CompileResult,
+  deps: VerifyDeps
+): Promise<{ compilerVersion: string | null; frameworkCommit: string | null }> {
+  let compilerVersion = compiled.compilerVersion ?? null;
+  let frameworkCommit = compiled.frameworkCommit ?? null;
+  if (!compilerVersion) {
+    const version = await deps.fetchVersion();
+    compilerVersion = version?.compilerVersion ?? null;
+    frameworkCommit = frameworkCommit ?? version?.frameworkCommit ?? null;
+  }
+  return { compilerVersion, frameworkCommit };
 }
 
 async function hashModules(onchain: Record<string, string>): Promise<Record<string, string>> {
@@ -127,7 +142,14 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
   const computedDigest = await sourceDigest(pkg.manifest, sourceFiles);
   const exact = computedDigest === pkg.sourceDigest;
 
-  const sanitized = sanitizeManifest(pkg.manifest, { frameworkCommit });
+  const providedDeps = [
+    ...new Set(
+      Object.keys(depFiles)
+        .filter((path) => /^deps\/[A-Za-z_][A-Za-z0-9_]*\/Move\.toml$/.test(path))
+        .map((path) => path.split("/")[1])
+    ),
+  ];
+  const sanitized = sanitizeManifest(pkg.manifest, { frameworkCommit, providedDeps });
   if (!sanitized.ok) {
     const record = recordFor("failed", exact, computedDigest, sanitized.error);
     await deps.putVerification(env, record);
@@ -186,14 +208,15 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
   const compiled = await deps.compile(
     { "Move.toml": sanitized.manifest, ...sourceFiles, ...depFiles },
     token,
-    { includedArtifacts: "none" }
+    { includedArtifacts: "none", purpose: "verify" }
   );
   if (!compiled.ok) {
     const detail = (compiled.stderr || compiled.stdout || "").trim();
     const error = detail ? `${compiled.error}\n${detail.slice(0, 2000)}` : compiled.error;
     const status = exact ? "unreproduced" : "failed";
+    const version = await resolveVersion(compiled, deps);
     const record = recordFor(status, exact, computedDigest, error, {
-      compilerVersion: compiled.compilerVersion ?? null,
+      compilerVersion: version.compilerVersion,
       frameworkRev,
     });
     if (exact) {
@@ -227,7 +250,8 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
 
   const { status, exactSource } = classify(exact, comparison.ok);
   const onchainModules = await hashModules(scoped);
-  const compilerVersion = compiled.compilerVersion ?? null;
+  const version = await resolveVersion(compiled, deps);
+  const compilerVersion = version.compilerVersion;
 
   const firstMismatch = comparison.modules.find((m) => !m.ok);
   const mismatch = comparison.missing.length

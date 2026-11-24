@@ -10,13 +10,14 @@ const SOURCE = "module 0x1::a {}\n";
 const UPLOAD = { "sources/a.move": SOURCE };
 
 function makeDeps(overrides = {}) {
-  const calls = { compile: 0, bundles: [], records: [], files: null };
+  const calls = { compile: 0, bundles: [], records: [], files: null, opts: null, version: 0 };
   const deps = {
     fetchRegistry: async () => [pkg],
     fetchModuleBytecode: async () => ({ a: "0xaa" }),
-    compile: async (files) => {
+    compile: async (files, _token, opts) => {
       calls.compile++;
       calls.files = files;
+      calls.opts = opts;
       return {
         ok: true,
         code: 0,
@@ -28,6 +29,10 @@ function makeDeps(overrides = {}) {
         stdout: "",
         stderr: "",
       };
+    },
+    fetchVersion: async () => {
+      calls.version++;
+      return null;
     },
     getVerification: async () => null,
     putVerification: async (_env, record) => calls.records.push(record),
@@ -70,6 +75,7 @@ let pkg;
     check("bundle stored", calls.bundles.length === 1);
     check("record stored", calls.records.length === 1 && calls.records[0].status === "verified");
     check("compile received the manifest and sources", calls.files["Move.toml"].includes('name = "demo"') && calls.files["sources/a.move"] === SOURCE, JSON.stringify(calls.files));
+    check("compile asks for the verify lane", calls.opts?.purpose === "verify", JSON.stringify(calls.opts));
   }
 
   {
@@ -185,6 +191,50 @@ let pkg;
     const out = await verifyPackage({ ...base, files, deps });
     check("rejects an unsafe dependency manifest", out.ok === false && /local|dependency manifest/i.test(out.error || ""), JSON.stringify(out));
     check("does not compile an unsafe dependency manifest", calls.compile === 0);
+  }
+
+  {
+    const { deps, calls } = makeDeps({
+      fetchVersion: async () => {
+        calls.version++;
+        return { compilerVersion: "supra 0.5.0", frameworkCommit: "f".repeat(40) };
+      },
+    });
+    const out = await verifyPackage({ ...base, deps });
+    check("records the version from GET /version", out.record.compilerVersion === "supra 0.5.0", out.record.compilerVersion);
+    check("calls the version endpoint once", calls.version === 1, String(calls.version));
+  }
+
+  {
+    const { deps, calls } = makeDeps({
+      compile: async () => ({ ok: true, code: 0, modules: ["0x1::a"], bytecode: ["0xaa"], metadata: null, artifactsOmitted: false, ms: 1, stdout: "", stderr: "", compilerVersion: "from-compile" }),
+      fetchVersion: async () => {
+        calls.version++;
+        return { compilerVersion: "from-endpoint", frameworkCommit: null };
+      },
+    });
+    const out = await verifyPackage({ ...base, deps });
+    check("prefers the compile response version", out.record.compilerVersion === "from-compile" && calls.version === 0, `${out.record.compilerVersion}/${calls.version}`);
+  }
+
+  {
+    const manifest = '[package]\nname = "demo"\n\n[dependencies.RazorLibs]\ngit = "https://github.com/example/razor.git"\nrev = "main"\n';
+    const R = { ...pkg, manifest, sourceDigest: "00" };
+    const { deps, calls } = makeDeps({ fetchRegistry: async () => [R] });
+    const out = await verifyPackage({
+      ...base,
+      files: {
+        "sources/a.move": SOURCE,
+        "deps/RazorLibs/Move.toml": '[package]\nname = "RazorLibs"\n',
+        "deps/RazorLibs/sources/x.move": "module 0x1::x {}\n",
+      },
+      deps,
+    });
+    check(
+      "service bundles a provided git dep",
+      out.ok && calls.files["Move.toml"].includes('local = "deps/RazorLibs"') && !calls.files["Move.toml"].includes("example/razor"),
+      calls.files["Move.toml"]
+    );
   }
 
   report(state);

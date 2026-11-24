@@ -1,4 +1,4 @@
-import { COMPILE_MAX_BODY_BYTES, COMPILE_TOKEN, compileMove } from "@/lib/move/compileService";
+import { COMPILE_MAX_BODY_BYTES, COMPILE_TOKEN, compileMove, fetchCompileVersion } from "@/lib/move/compileService";
 import { clientKey, pruneBuckets, rateLimited } from "@/lib/move/rateLimit";
 import { isMoveAddress, isVaultNetwork, normalizeAddress } from "@/lib/vault/metadata";
 import { json, envOr503 } from "@/lib/verify/http";
@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       fetchRegistry,
       fetchModuleBytecode,
       compile: compileMove,
+      fetchVersion: () => fetchCompileVersion(COMPILE_TOKEN),
       getVerification,
       putVerification,
       putBundle,
