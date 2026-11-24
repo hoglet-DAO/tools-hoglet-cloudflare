@@ -41,7 +41,7 @@ export function useContractModules() {
       ]);
 
       if (accountRes.ok) {
-        const accountData = await accountRes.json();
+        const accountData = (await accountRes.json()) as any;
         setAuthKey(accountData?.authentication_key || null);
       }
 
@@ -50,7 +50,7 @@ export function useContractModules() {
         setModuleCursor(cursor);
         setHasMoreModules(!!cursor);
 
-        const data = await modulesRes.json();
+        const data = (await modulesRes.json()) as any;
         const parsedModules = (data.data || data).map((mod: any, idx: number) => {
           let parsedAbi = null;
           if (mod.abi) {
@@ -98,7 +98,7 @@ export function useContractModules() {
         setModuleCursor(cursor);
         setHasMoreModules(!!cursor);
 
-        const data = await res.json();
+        const data = (await res.json()) as any;
         const parsedModules = (data.data || data).map((mod: any, idx: number) => {
           let parsedAbi = null;
           if (mod.abi) {

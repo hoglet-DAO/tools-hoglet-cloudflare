@@ -49,7 +49,7 @@ export async function callViewRaw<TResult = any[]>(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    const errorData = (await response.json().catch(() => ({ message: response.statusText }))) as any;
     traceWarn(`[callViewRaw] ${moduleAddress}::${moduleName}::${functionName} -> ${response.status}`, errorData);
     throw new Error(`RPC Error: ${errorData.message || response.statusText}`);
   }
@@ -86,7 +86,7 @@ export async function addressHostsModules(rpcUrl: string, address: string): Prom
   const proxyPath = isMainnet ? "/api/rpc-v3/mainnet" : "/api/rpc-v3/testnet";
   const res = await fetch(`${proxyPath}/accounts/${address}/modules?count=1`);
   if (!res.ok) return false;
-  const data = await res.json();
+  const data = (await res.json()) as any;
   const mods = Array.isArray(data) ? data : data?.data;
   return Array.isArray(mods) && mods.length > 0;
 }

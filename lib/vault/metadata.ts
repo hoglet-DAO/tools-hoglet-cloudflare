@@ -68,7 +68,7 @@ export async function readView(
       cache: "no-store",
     });
     if (!res.ok) return null;
-    const data = await res.json();
+    const data = (await res.json()) as any;
     return Array.isArray(data?.result) ? data.result : null;
   } catch {
     return null;
@@ -92,7 +92,7 @@ async function addressHostsModules(network: VaultNetwork, address: string): Prom
       cache: "no-store",
     });
     if (!res.ok) return false;
-    const data = await res.json();
+    const data = (await res.json()) as any;
     const modules = Array.isArray(data) ? data : data?.data;
     return Array.isArray(modules) && modules.length > 0;
   } catch {

@@ -28,7 +28,7 @@ export const fetchModuleABI = async (
         if (!response.ok) {
             throw new Error(`Failed to fetch ABI: ${response.statusText}`);
         }
-        const data = await response.json();
+        const data = (await response.json()) as any;
         return data.abi as ModuleABI;
     } catch (error) {
         console.error('Error fetching module ABI:', error);

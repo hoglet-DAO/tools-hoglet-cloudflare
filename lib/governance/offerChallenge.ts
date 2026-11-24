@@ -127,7 +127,7 @@ export async function getAccountSequenceNumber(rpcUrl: string, address: string):
   const proxyPath = isMainnet ? "/api/rpc/mainnet" : "/api/rpc/testnet";
   const res = await fetch(`${proxyPath}/accounts/${address}`);
   if (!res.ok) throw new Error(`Could not read the account (${res.status})`);
-  const data = await res.json();
+  const data = (await res.json()) as any;
   trace("[governance:proof] account response", { address, status: res.status, data });
   const raw = data?.sequence_number ?? data?.sequenceNumber;
   if (raw === undefined || raw === null) throw new Error("Account has no sequence number");

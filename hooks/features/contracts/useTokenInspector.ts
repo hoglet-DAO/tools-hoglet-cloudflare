@@ -84,7 +84,7 @@ export function useTokenInspector() {
           throw new Error(`Failed to fetch resources: ${res.statusText}`);
         }
 
-        const data = await res.json();
+        const data = (await res.json()) as any;
         const resources = data.data || data; // handle unwrapped or wrapped response
         allResources = [...allResources, ...resources];
 

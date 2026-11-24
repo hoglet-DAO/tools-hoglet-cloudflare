@@ -21,7 +21,7 @@ export default function Dashboard({ setActiveSection }: { setActiveSection: (s: 
         const proxyPathV2 = isMainnet ? "/api/rpc-v2/mainnet" : "/api/rpc-v2/testnet";
 
         const response = await fetch(`${proxyPathV2}/accounts/1/resources/0x1%3A%3Areconfiguration%3A%3AConfiguration`);
-        const data = await response.json();
+        const data = (await response.json()) as any;
         if (data.data) {
           const lastReconfig = parseInt(data.data.last_reconfiguration_time);
           const epochInterval = 7200;
@@ -47,7 +47,7 @@ export default function Dashboard({ setActiveSection }: { setActiveSection: (s: 
             arguments: ["5000"]
           })
         });
-        const data = await response.json();
+        const data = (await response.json()) as any;
         if (data.result && data.result[0]) {
           setEstimatedFee((parseInt(data.result[0]) / 1000000).toFixed(2));
         }

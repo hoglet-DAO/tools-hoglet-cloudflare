@@ -137,7 +137,7 @@ export async function executeSponsoredTransactionFlow(
         });
 
         if (!signResponse.ok) {
-            const errorData = await signResponse.json();
+            const errorData = (await signResponse.json()) as any;
             throw new Error(errorData.error || "Failed to sign sponsor transaction by backend");
         }
 

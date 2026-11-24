@@ -31,7 +31,7 @@ export default function Marketplace({ onUseModule }: { onUseModule: (module: Mod
       try {
         const res = await fetch(LOCAL_JSON_URL, { cache: 'no-cache' });
         if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
+        const data = (await res.json()) as any;
         if (data && data.modules) {
           setModules(data.modules);
           setFilteredModules(data.modules);
