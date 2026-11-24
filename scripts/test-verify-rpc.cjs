@@ -69,6 +69,23 @@ globalThis.fetch = async (input) => {
     const modules = await fetchModuleBytecode("mainnet", ADDRESS);
     check("reads both pages", Object.keys(modules).sort().join(",") === "a,b,c", JSON.stringify(modules));
     check("normalises hex", modules.a === "0xaa" && modules.c === "0xcc", JSON.stringify(modules));
+
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      if (calls > 4) throw new Error("cursor loop did not stop");
+      return new Response(
+        JSON.stringify(calls === 1 ? [{ bytecode: "0xaa", abi: { name: "a" } }] : []),
+        { status: 200, headers: { "x-supra-cursor": "same" } }
+      );
+    };
+    let looped = {};
+    try {
+      looped = await fetchModuleBytecode("mainnet", ADDRESS);
+    } catch (e) {
+      check("stops on a repeated cursor", false, String(e));
+    }
+    check("stops on a repeated cursor", Object.keys(looped).length === 1 && calls <= 3, `calls=${calls}`);
   } finally {
     globalThis.fetch = realFetch;
   }

@@ -12,6 +12,14 @@ export function json(body: unknown, status = 200, headers: Record<string, string
  * Bindings are absent under plain `next dev`. The API says so with 503 instead
  * of throwing, so the page can show "verification unavailable in dev".
  */
+export function tryVerifyEnv(): VerifyEnv | null {
+  try {
+    return verifyEnv();
+  } catch {
+    return null;
+  }
+}
+
 export function envOr503(): { ok: true; env: VerifyEnv } | { ok: false; response: NextResponse } {
   try {
     return { ok: true, env: verifyEnv() };

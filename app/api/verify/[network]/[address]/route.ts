@@ -1,5 +1,5 @@
 import { isVaultNetwork, normalizeAddress } from "@/lib/vault/metadata";
-import { envOr503, json } from "@/lib/verify/http";
+import { json, tryVerifyEnv } from "@/lib/verify/http";
 import { fetchRegistry } from "@/lib/verify/rpc";
 import { listVerifications } from "@/lib/verify/store";
 
@@ -12,13 +12,12 @@ export async function GET(
   const normalized = normalizeAddress(address);
   if (!normalized) return json({ ok: false, error: "invalid address" }, 400);
 
-  const envResult = envOr503();
-  if (!envResult.ok) return envResult.response;
+  const env = tryVerifyEnv();
 
   try {
     const [packages, records] = await Promise.all([
       fetchRegistry(network, normalized),
-      listVerifications(envResult.env, network, normalized),
+      env ? listVerifications(env, network, normalized) : Promise.resolve([]),
     ]);
 
     return json({

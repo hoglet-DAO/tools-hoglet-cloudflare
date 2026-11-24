@@ -148,6 +148,12 @@ export function VerifyPage({ initialAddress }: { initialAddress: string }) {
             </div>
           )}
 
+          {detail?.verification?.error && (
+            <pre className="whitespace-pre-wrap rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-[11px] text-rose-200">
+              {detail.verification.error}
+            </pre>
+          )}
+
           {detail && source && <SourcePanel source={source} verification={detail.verification} t={t} />}
 
           {detail && !source && !detail.hasSource && (

@@ -77,25 +77,34 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
   const now = Date.now();
   const key = { network, address, packageName, upgradeNumber: pkg.upgradeNumber };
 
+  const recordFor = (
+    status: VerificationRecord["status"],
+    exactSource: boolean,
+    computedDigest: string | null,
+    error: string | null,
+    extra: Partial<VerificationRecord> = {}
+  ): VerificationRecord => ({
+    network,
+    address,
+    packageName,
+    upgradeNumber: pkg.upgradeNumber,
+    status,
+    exactSource,
+    sourceDigest: pkg.sourceDigest,
+    computedDigest,
+    bundleSha256: null,
+    compilerVersion: null,
+    frameworkRev: null,
+    onchainModules: {},
+    error,
+    submittedBy: submittedBy ?? null,
+    createdAt: now,
+    updatedAt: now,
+    ...extra,
+  });
+
   if (pkg.modules.length === 0) {
-    const record: VerificationRecord = {
-      network,
-      address,
-      packageName,
-      upgradeNumber: pkg.upgradeNumber,
-      status: "failed",
-      exactSource: false,
-      sourceDigest: pkg.sourceDigest,
-      computedDigest: null,
-      bundleSha256: null,
-      compilerVersion: null,
-      frameworkRev: null,
-      onchainModules: {},
-      error: "package has no modules",
-      submittedBy: submittedBy ?? null,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const record = recordFor("failed", false, null, "package has no modules");
     await deps.putVerification(env, record);
     return { ok: false, errorCode: "failed", error: record.error!, record };
   }
@@ -120,97 +129,46 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
 
   const sanitized = sanitizeManifest(pkg.manifest, { frameworkCommit });
   if (!sanitized.ok) {
-    const record: VerificationRecord = {
-      network,
-      address,
-      packageName,
-      upgradeNumber: pkg.upgradeNumber,
-      status: "failed",
-      exactSource: exact,
-      sourceDigest: pkg.sourceDigest,
-      computedDigest,
-      bundleSha256: null,
-      compilerVersion: null,
-      frameworkRev: null,
-      onchainModules: {},
-      error: sanitized.error,
-      submittedBy: submittedBy ?? null,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const record = recordFor("failed", exact, computedDigest, sanitized.error);
     await deps.putVerification(env, record);
     return { ok: false, errorCode: "failed", error: sanitized.error, record };
   }
 
-  const compiled = await deps.compile(
-    { "Move.toml": sanitized.manifest, ...sourceFiles, ...depFiles },
-    token,
-    { includedArtifacts: "none" }
-  );
-  if (!compiled.ok) {
-    const record: VerificationRecord = {
-      network,
-      address,
-      packageName,
-      upgradeNumber: pkg.upgradeNumber,
-      status: "failed",
-      exactSource: exact,
-      sourceDigest: pkg.sourceDigest,
-      computedDigest,
-      bundleSha256: null,
-      compilerVersion: null,
-      frameworkRev: sanitized.gitDeps.length ? JSON.stringify(sanitized.gitDeps) : null,
-      onchainModules: {},
-      error: compiled.error,
-      submittedBy: submittedBy ?? null,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await deps.putVerification(env, record);
-    return { ok: false, errorCode: "compile", error: compiled.error, upstreamStatus: compiled.status, record };
+  // A dependency manifest is as untrusted as the root one. Nested `local` deps
+  // are rejected in v1 because they would need a second rewrite base.
+  for (const [path, content] of Object.entries(depFiles)) {
+    if (!path.endsWith("/Move.toml")) continue;
+    const dep = sanitizeManifest(content);
+    if (!dep.ok) {
+      const error = `dependency manifest ${path}: ${dep.error}`;
+      const record = recordFor("failed", exact, computedDigest, error);
+      await deps.putVerification(env, record);
+      return { ok: false, errorCode: "failed", error, record };
+    }
+    if (dep.localDeps.length > 0) {
+      const error = `dependency manifest ${path}: nested local dependencies are not supported`;
+      const record = recordFor("failed", exact, computedDigest, error);
+      await deps.putVerification(env, record);
+      return { ok: false, errorCode: "failed", error, record };
+    }
+    depFiles[path] = dep.manifest;
   }
 
-  const onchain = await deps.fetchModuleBytecode(network, address);
-  const comparison = compareModuleBytecode(compiled, onchain);
-  const { status, exactSource } = classify(exact, comparison.ok);
-  const onchainModules = await hashModules(onchain);
-  const compilerVersion = compiled.compilerVersion ?? null;
   const frameworkRev = sanitized.gitDeps.length ? JSON.stringify(sanitized.gitDeps) : null;
 
-  const error =
-    status === "failed"
-      ? comparison.missing.length
-        ? `missing modules: ${comparison.missing.join(", ")}`
-        : "bytecode does not match"
-      : null;
-
-  const record: VerificationRecord = {
-    network,
-    address,
-    packageName,
-    upgradeNumber: pkg.upgradeNumber,
-    status,
-    exactSource,
-    sourceDigest: pkg.sourceDigest,
-    computedDigest,
-    bundleSha256: null,
-    compilerVersion,
-    frameworkRev,
-    onchainModules,
-    error,
-    submittedBy: submittedBy ?? null,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  if (status !== "failed") {
+  const storeBundle = async (
+    status: VerificationRecord["status"],
+    exactSource: boolean,
+    compilerVersion: string | null,
+    onchainModules: Record<string, string>
+  ): Promise<string> => {
     const bundle: Bundle = {
       version: 1,
       network,
       address,
       package: packageName,
       upgradeNumber: pkg.upgradeNumber,
-      files: sourceFiles,
+      files: { ...sourceFiles, ...depFiles },
       manifest: sanitized.manifest,
       verification: {
         status,
@@ -222,14 +180,79 @@ export async function verifyPackage(args: VerifyArgs): Promise<VerifyOutcome> {
         onchainModules,
       },
     };
-    record.bundleSha256 = await deps.putBundle(env, bundle);
+    return deps.putBundle(env, bundle);
+  };
+
+  const compiled = await deps.compile(
+    { "Move.toml": sanitized.manifest, ...sourceFiles, ...depFiles },
+    token,
+    { includedArtifacts: "none" }
+  );
+  if (!compiled.ok) {
+    const detail = (compiled.stderr || compiled.stdout || "").trim();
+    const error = detail ? `${compiled.error}\n${detail.slice(0, 2000)}` : compiled.error;
+    const status = exact ? "unreproduced" : "failed";
+    const record = recordFor(status, exact, computedDigest, error, {
+      compilerVersion: compiled.compilerVersion ?? null,
+      frameworkRev,
+    });
+    if (exact) {
+      record.bundleSha256 = await storeBundle(status, true, record.compilerVersion, {});
+    }
+    await deps.putVerification(env, record);
+    return {
+      ok: exact,
+      errorCode: exact ? undefined : "compile",
+      error,
+      upstreamStatus: compiled.status,
+      record,
+    };
+  }
+
+  const onchain = await deps.fetchModuleBytecode(network, address);
+  const scoped: Record<string, string> = {};
+  const missingFromRpc: string[] = [];
+  for (const mod of pkg.modules) {
+    if (onchain[mod.name] === undefined) missingFromRpc.push(mod.name);
+    else scoped[mod.name] = onchain[mod.name];
+  }
+
+  const comparison = compareModuleBytecode(compiled, scoped);
+  if (missingFromRpc.length > 0) {
+    comparison.ok = false;
+    for (const name of missingFromRpc) {
+      if (!comparison.missing.includes(name)) comparison.missing.push(name);
+    }
+  }
+
+  const { status, exactSource } = classify(exact, comparison.ok);
+  const onchainModules = await hashModules(scoped);
+  const compilerVersion = compiled.compilerVersion ?? null;
+
+  const firstMismatch = comparison.modules.find((m) => !m.ok);
+  const mismatch = comparison.missing.length
+    ? `missing modules: ${comparison.missing.join(", ")}`
+    : firstMismatch
+      ? `module ${firstMismatch.name} differs at byte ${firstMismatch.firstDiff ?? 0}`
+      : comparison.extra.length
+        ? `unexpected modules: ${comparison.extra.join(", ")}`
+        : null;
+
+  const record = recordFor(status, exactSource, computedDigest, status === "verified" ? null : mismatch, {
+    compilerVersion,
+    frameworkRev,
+    onchainModules,
+  });
+
+  if (status !== "failed") {
+    record.bundleSha256 = await storeBundle(status, exactSource, compilerVersion, onchainModules);
   }
 
   await deps.putVerification(env, record);
   return {
     ok: status !== "failed",
     errorCode: status === "failed" ? "failed" : undefined,
-    error: error ?? undefined,
+    error: record.error ?? undefined,
     record,
     comparison,
   };

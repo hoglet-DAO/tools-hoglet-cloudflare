@@ -18,7 +18,8 @@ export const COMPILE_BASE_URL =
  */
 function normalizeHexBytes(value: string): string | null {
   if (!value) return null;
-  const body = value.startsWith("0x") ? value.slice(2) : value;
+  const trimmed = value.replace(/\s+/g, "");
+  const body = trimmed.startsWith("0x") ? trimmed.slice(2) : trimmed;
   if (!/^[0-9a-fA-F]*$/.test(body)) return null;
   const padded = body.length % 2 === 0 ? body : "0" + body;
   return "0x" + padded.toLowerCase();
@@ -175,6 +176,10 @@ export interface CompileFailure {
   /** Compiler output. Populated for a compile failure, which is the case that actually explains why. */
   stdout?: string;
   stderr?: string;
+  /** The toolchain version that ran, when the service reports it. */
+  compilerVersion?: string | null;
+  /** The framework revision used, when the service reports it. */
+  frameworkCommit?: string | null;
   ms?: number;
 }
 
@@ -448,6 +453,8 @@ async function callService(
           code: json.code,
           stdout: json.stdout ?? "",
           stderr: json.stderr ?? "",
+          compilerVersion: json.compiler_version ?? null,
+          frameworkCommit: json.framework_commit ?? null,
           ms: json.ms,
         };
       }

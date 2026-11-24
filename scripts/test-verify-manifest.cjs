@@ -37,6 +37,7 @@ const good = validateVerifyFiles({
 });
 check("accepts sources and a dep tree", good.ok === true, JSON.stringify(good));
 check("accepts an empty upload for a chain-source package", validateVerifyFiles({}).ok === true);
+check("accepts and ignores tests/doc", (() => { const r = validateVerifyFiles({ "sources/a.move": "", "tests/a_test.move": "", "doc/readme.md": "" }); return r.ok === true && !("tests/a_test.move" in r.files) && !("doc/readme.md" in r.files); })());
 
 const rootManifest = validateVerifyFiles({ "Move.toml": "" });
 check("rejects a root Move.toml", rootManifest.ok === false, JSON.stringify(rootManifest));
@@ -82,6 +83,24 @@ check("rejects a non-github git host", sanitizeManifest(withGit("https://gitlab.
 
 const newlineRev = BASE.replace('rev = "dev"', 'rev = "dev\nmalicious"');
 check("rejects a rev with a newline", sanitizeManifest(newlineRev).ok === false);
+
+const inline = BASE.replace("[dependencies.RazorLibs]", '[dependencies]\nX = { git = "http://evil/x" }');
+check("rejects an inline dependency table", sanitizeManifest(inline).ok === false);
+
+const commented = BASE.replace("[dependencies.RazorLibs]", "[dependencies.RazorLibs] # libs");
+const commentedRes = sanitizeManifest(commented);
+check("accepts a header comment and still rewrites the dep", commentedRes.ok && commentedRes.localDeps.includes("RazorLibs"), JSON.stringify(commentedRes));
+
+const unknown = BASE.replace(
+  'subdir = "aptos-move/framework/supra-framework"',
+  'subdir = "aptos-move/framework/supra-framework"\nfoo = "bar"'
+);
+check("rejects an unknown dependency key", sanitizeManifest(unknown).ok === false);
+
+const badSubdir = BASE.replace('"aptos-move/framework/supra-framework"', '"../../etc"');
+check("rejects a traversing subdir", sanitizeManifest(badSubdir).ok === false);
+
+check("rejects a rev that looks like a flag", sanitizeManifest(BASE.replace('rev = "dev"', 'rev = "-x"')).ok === false);
 
 const commit = "a".repeat(40);
 const pinned = sanitizeManifest(BASE, { frameworkCommit: commit });

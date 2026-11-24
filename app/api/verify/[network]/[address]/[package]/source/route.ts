@@ -1,5 +1,5 @@
 import { isVaultNetwork, normalizeAddress } from "@/lib/vault/metadata";
-import { envOr503, json } from "@/lib/verify/http";
+import { json, tryVerifyEnv } from "@/lib/verify/http";
 import { fetchRegistry } from "@/lib/verify/rpc";
 import { getBundle, getVerification } from "@/lib/verify/store";
 
@@ -15,23 +15,21 @@ export async function GET(
   if (!normalized) return json({ ok: false, error: "invalid address" }, 400);
   if (!PACKAGE_NAME.test(packageName)) return json({ ok: false, error: "invalid package name" }, 400);
 
-  const envResult = envOr503();
-  if (!envResult.ok) return envResult.response;
-  const env = envResult.env;
+  const env = tryVerifyEnv();
 
   try {
     const packages = await fetchRegistry(network, normalized);
     const pkg = packages.find((p) => p.name === packageName);
     if (!pkg) return json({ ok: false, error: "package not found" }, 404);
 
-    const verification = await getVerification(env, {
+    const verification = env ? await getVerification(env, {
       network,
       address: normalized,
       packageName,
       upgradeNumber: pkg.upgradeNumber,
-    });
+    }) : null;
 
-    if (verification?.bundleSha256) {
+    if (verification?.bundleSha256 && env) {
       const bundle = await getBundle(env, verification.bundleSha256);
       if (bundle) {
         return json({

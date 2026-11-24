@@ -12,7 +12,7 @@ export interface Comparison {
 }
 
 function normalize(hex: string): string {
-  return hex.replace(/^0x/i, "").toLowerCase();
+  return hex.replace(/\s+/g, "").replace(/^0x/i, "").toLowerCase();
 }
 
 function moduleNameFromId(id: string): string {

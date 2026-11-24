@@ -58,6 +58,8 @@ export function validateVerifyFiles(
     if (content.length > MAX_FILE_BYTES) {
       return { ok: false, error: `file "${path}" exceeds 2MB limit` };
     }
+    // the spec accepts tests/ and doc/ but does not compile them
+    if (/^(tests|doc)\//.test(path)) continue;
     if (!isAllowed(path)) {
       return {
         ok: false,

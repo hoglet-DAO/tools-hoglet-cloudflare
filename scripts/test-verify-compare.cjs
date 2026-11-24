@@ -28,6 +28,9 @@ check("empty chain map is not a match", empty.ok === false, JSON.stringify(empty
 const withFriend = compareModuleBytecode(compiled(["0x1::a::friend"], ["0xaa"]), { a: "0xaa" });
 check("reads the module name from an id with friends", withFriend.ok === true, JSON.stringify(withFriend));
 
+const spaced = compareModuleBytecode(compiled(["0x1::a"], ["0xaa\nbb"]), { a: " 0xAABB " });
+check("tolerates whitespace in hex", spaced.ok === true, JSON.stringify(spaced));
+
 console.log();
 console.log("classify:");
 check("digest + bytecode", JSON.stringify(classify(true, true)) === JSON.stringify({ status: "verified", exactSource: true }));

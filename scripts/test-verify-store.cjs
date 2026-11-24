@@ -72,6 +72,9 @@ const reordered = {
   check("null + verified exact", shouldReplace(null, rec("verified", true)) === true);
   check("verified exact + failed", shouldReplace(rec("verified", true), rec("failed", false)) === false);
   check("pending + failed", shouldReplace(rec("pending", false), rec("failed", false)) === true);
+  check("verified non-exact + pending", shouldReplace(rec("verified", false), rec("pending", false)) === false);
+  check("failed + pending", shouldReplace(rec("failed", false), rec("pending", false)) === true);
+  check("pending + pending", shouldReplace(rec("pending", false), rec("pending", false)) === true);
   check("verified exact + unreproduced", shouldReplace(rec("verified", true), rec("unreproduced", true)) === false);
   check("verified non-exact + verified exact", shouldReplace(rec("verified", false), rec("verified", true)) === true);
   check("failed + verified", shouldReplace(rec("failed", false), rec("verified", true)) === true);

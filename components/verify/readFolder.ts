@@ -21,6 +21,7 @@ export async function readFolderFiles(input: HTMLInputElement): Promise<Record<s
   for (const [path, content] of Object.entries(raw)) {
     const trimmed = common ? path.slice(root.length + 1) : path;
     if (trimmed === "Move.toml") continue;
+    if (/^(tests|doc|build|examples)\//.test(trimmed)) continue;
     if (trimmed.endsWith(".move") && !trimmed.includes("/")) out[`sources/${trimmed}`] = content;
     else out[trimmed] = content;
   }

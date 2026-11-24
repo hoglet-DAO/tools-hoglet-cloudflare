@@ -67,6 +67,9 @@ export function shouldReplace(
 ): boolean {
   if (!existing) return true;
   if (existing.status === "verified" && existing.exactSource) return false;
+  if (next.status === "pending" && existing.status !== "failed" && existing.status !== "pending") {
+    return false;
+  }
   if (next.status === "failed" && existing.status !== "pending") return false;
   if (next.status === "unreproduced" && existing.status === "verified") return false;
   return true;

@@ -9,13 +9,14 @@ const TIMEOUT_MS = 15_000;
 
 function normalizeHex(value: unknown): string {
   if (typeof value !== "string" || !value) return "";
-  const body = value.startsWith("0x") || value.startsWith("0X") ? value.slice(2) : value;
-  return body ? `0x${body.toLowerCase()}` : "";
+  const raw = value.replace(/\s+/g, "");
+  const body = (raw.startsWith("0x") || raw.startsWith("0X") ? raw.slice(2) : raw).toLowerCase();
+  return body ? `0x${body}` : "";
 }
 
 /** The registry stores byte fields as `0x`-prefixed gzip; an empty vector is `0x`. */
 export async function decodeGzipHex(hex: string): Promise<string> {
-  const body = hex.replace(/^0x/, "");
+  const body = hex.replace(/\s+/g, "").replace(/^0x/, "");
   if (!body) return "";
   const bytes = Uint8Array.from(body.match(/../g) ?? [], (h) => parseInt(h, 16));
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
@@ -62,6 +63,7 @@ export async function fetchModuleBytecode(
 ): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
   let cursor: string | null = null;
+  let pages = 0;
   do {
     const url = new URL(`${RPC_BASE[network]}/rpc/v3/accounts/${address}/modules`);
     url.searchParams.set("count", "100");
@@ -74,7 +76,12 @@ export async function fetchModuleBytecode(
       const bytecode = normalizeHex(row?.bytecode);
       if (bytecode) out[name] = bytecode;
     }
-    cursor = headers.get("x-supra-cursor");
-  } while (cursor);
+    const next = headers.get("x-supra-cursor");
+    pages++;
+    // A repeated cursor or an empty page is how Supra signals "no more",
+    // even though it keeps sending the header.
+    if (!next || next === cursor || rows.length === 0 || pages >= 20) break;
+    cursor = next;
+  } while (true);
   return out;
 }

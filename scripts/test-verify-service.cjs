@@ -10,7 +10,7 @@ const SOURCE = "module 0x1::a {}\n";
 const UPLOAD = { "sources/a.move": SOURCE };
 
 function makeDeps(overrides = {}) {
-  const calls = { compile: 0, bundles: 0, records: [], files: null };
+  const calls = { compile: 0, bundles: [], records: [], files: null };
   const deps = {
     fetchRegistry: async () => [pkg],
     fetchModuleBytecode: async () => ({ a: "0xaa" }),
@@ -31,8 +31,8 @@ function makeDeps(overrides = {}) {
     },
     getVerification: async () => null,
     putVerification: async (_env, record) => calls.records.push(record),
-    putBundle: async () => {
-      calls.bundles++;
+    putBundle: async (_env, bundle) => {
+      calls.bundles.push(bundle);
       return "f".repeat(64);
     },
     ...overrides,
@@ -67,7 +67,7 @@ let pkg;
     const out = await verifyPackage({ ...base, deps });
     check("digest + bytecode match", out.ok === true && out.record.status === "verified", JSON.stringify(out.record));
     check("exact source is true", out.record.exactSource === true);
-    check("bundle stored", calls.bundles === 1);
+    check("bundle stored", calls.bundles.length === 1);
     check("record stored", calls.records.length === 1 && calls.records[0].status === "verified");
     check("compile received the manifest and sources", calls.files["Move.toml"].includes('name = "demo"') && calls.files["sources/a.move"] === SOURCE, JSON.stringify(calls.files));
   }
@@ -84,7 +84,7 @@ let pkg;
     const { deps, calls } = makeDeps({ fetchModuleBytecode: async () => ({ a: "0xff" }) });
     const out = await verifyPackage({ ...base, deps });
     check("digest only is unreproduced", out.record.status === "unreproduced" && out.record.exactSource === true, JSON.stringify(out.record));
-    check("unreproduced stores the bundle", calls.bundles === 1);
+    check("unreproduced stores the bundle", calls.bundles.length === 1);
   }
 
   {
@@ -92,7 +92,7 @@ let pkg;
     const { deps, calls } = makeDeps({ fetchModuleBytecode: async () => ({ a: "0xff" }) });
     const out = await verifyPackage({ ...base, deps });
     check("neither is failed", out.ok === false && out.record.status === "failed" && out.errorCode === "failed", JSON.stringify(out));
-    check("failed stores no bundle", calls.bundles === 0);
+    check("failed stores no bundle", calls.bundles.length === 0);
     pkg.sourceDigest = digest;
   }
 
@@ -111,9 +111,14 @@ let pkg;
   }
 
   {
-    const { deps } = makeDeps({ fetchModuleBytecode: async () => ({ a: "0xaa", b: "0xbb" }) });
+    const B = "module 0x1::b {}\n";
+    const { deps } = makeDeps({
+      fetchRegistry: async () => [{ ...pkg, modules: [{ name: "a", source: SOURCE }, { name: "b", source: B }] }],
+      fetchModuleBytecode: async () => ({ a: "0xaa", b: "0xbb" }),
+    });
     const out = await verifyPackage({ ...base, deps });
     check("missing module is not verified", out.record.status !== "verified" && out.comparison.missing.includes("b"), JSON.stringify(out));
+    check("missing module error names it", (out.record.error || "").includes("b"), out.record.error);
   }
 
   {
@@ -135,12 +140,51 @@ let pkg;
   {
     pkg.sourceDigest = digest;
     const { deps, calls } = makeDeps({
-      compile: async () => ({ ok: false, error: "compiler rejected", modules: [], status: 503 }),
+      compile: async () => ({ ok: false, error: "compiler rejected", stderr: "line 3: boom", modules: [], status: 503 }),
     });
     const out = await verifyPackage({ ...base, deps });
-    check("compile failure is reported", out.ok === false && out.errorCode === "compile", JSON.stringify(out));
-    check("compile failure keeps the upstream status", out.upstreamStatus === 503, JSON.stringify(out));
-    check("compile failure stores a failed row and no bundle", calls.records.length === 1 && calls.records[0].status === "failed" && calls.bundles === 0);
+    check("exact source + compile failure is unreproduced", out.ok === true && out.record.status === "unreproduced", JSON.stringify(out.record));
+    check("the compiler detail is kept", (out.record.error || "").includes("boom"), out.record.error);
+    check("the unreproduced bundle is stored", calls.bundles.length === 1);
+
+    pkg.sourceDigest = "00";
+    const failedDeps = makeDeps({ compile: async () => ({ ok: false, error: "compiler rejected", modules: [] }) });
+    const failed = await verifyPackage({ ...base, deps: failedDeps.deps });
+    check("non-exact + compile failure is failed", failed.ok === false && failed.record.status === "failed", JSON.stringify(failed.record));
+    pkg.sourceDigest = digest;
+  }
+
+  {
+    const B = "module 0x1::b {}\n";
+    const { deps } = makeDeps({
+      fetchRegistry: async () => [{ ...pkg, modules: [{ name: "a", source: SOURCE }, { name: "b", source: B }] }],
+      fetchModuleBytecode: async () => ({ a: "0xaa", b: "0xbb", c: "0xcc" }),
+      compile: async () => ({ ok: true, code: 0, modules: ["0x1::a", "0x1::b"], bytecode: ["0xaa", "0xbb"], metadata: null, artifactsOmitted: false, ms: 1, stdout: "", stderr: "" }),
+    });
+    const out = await verifyPackage({ ...base, files: { "sources/a.move": SOURCE, "sources/b.move": B }, deps });
+    check("ignores modules from other packages at the address", out.record.status === "verified", JSON.stringify(out.record));
+  }
+
+  {
+    const files = {
+      "sources/a.move": SOURCE,
+      "deps/RazorLibs/Move.toml": '[package]\nname = "RazorLibs"\n',
+      "deps/RazorLibs/sources/x.move": "module 0x1::x {}\n",
+    };
+    const { deps, calls } = makeDeps();
+    const out = await verifyPackage({ ...base, files, deps });
+    check("bundle keeps dependency inputs", out.ok && calls.bundles[0].files["deps/RazorLibs/sources/x.move"] === files["deps/RazorLibs/sources/x.move"], JSON.stringify(Object.keys(calls.bundles[0]?.files || {})));
+  }
+
+  {
+    const files = {
+      "sources/a.move": SOURCE,
+      "deps/RazorLibs/Move.toml": '[package]\nname = "RazorLibs"\n[dependencies.X]\nlocal = "/etc"\n',
+    };
+    const { deps, calls } = makeDeps();
+    const out = await verifyPackage({ ...base, files, deps });
+    check("rejects an unsafe dependency manifest", out.ok === false && /local|dependency manifest/i.test(out.error || ""), JSON.stringify(out));
+    check("does not compile an unsafe dependency manifest", calls.compile === 0);
   }
 
   report(state);
