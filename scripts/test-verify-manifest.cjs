@@ -36,6 +36,7 @@ const good = validateVerifyFiles({
   "deps/RazorLibs/sources/a.move": "",
 });
 check("accepts sources and a dep tree", good.ok === true, JSON.stringify(good));
+check("accepts an empty upload for a chain-source package", validateVerifyFiles({}).ok === true);
 
 const rootManifest = validateVerifyFiles({ "Move.toml": "" });
 check("rejects a root Move.toml", rootManifest.ok === false, JSON.stringify(rootManifest));

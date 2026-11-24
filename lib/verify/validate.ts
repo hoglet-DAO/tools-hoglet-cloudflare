@@ -40,10 +40,12 @@ export function validateVerifyFiles(
     return { ok: false, error: "files must be an object mapping path to source" };
   }
   const entries = Object.entries(files as Record<string, unknown>);
-  if (entries.length === 0) return { ok: false, error: "files is empty" };
   if (entries.length > MAX_FILES) {
     return { ok: false, error: `too many files: maximum allowed is ${MAX_FILES}` };
   }
+  // An empty upload is valid: a `sparse` package already has its source on
+  // chain, and the verifier uses it. The service answers `source_missing` when
+  // the chain has none either.
 
   const clean: Record<string, string> = Object.create(null);
   for (const [path, content] of entries) {
