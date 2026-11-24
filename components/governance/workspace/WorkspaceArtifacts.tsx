@@ -109,23 +109,28 @@ export function WorkspaceArtifacts({
 
   return (
     <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Boxes className="h-3.5 w-3.5 text-cyan-300 shrink-0" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-          {t("workspaceArtifacts")}
-        </span>
-        <span className="ml-auto font-mono text-[10px] text-gray-500">
-          {t("workspaceArtifactsTotal", { count: modules.length, size: formatBytes(totalBytes) })}
-        </span>
-        <button
-          type="button"
-          onClick={downloadAll}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200 transition-colors hover:bg-cyan-500/20"
-          title={`${t("workspaceExport")} (.zip)`}
-        >
-          <Download className="h-3 w-3" />
-          <span>{t("workspaceExport")} (.zip)</span>
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Boxes className="h-3.5 w-3.5 text-cyan-300 shrink-0" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            {t("workspaceArtifacts")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="font-mono text-[10px] text-gray-500">
+            {t("workspaceArtifactsTotal", { count: modules.length, size: formatBytes(totalBytes) })}
+          </span>
+          <button
+            type="button"
+            onClick={downloadAll}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200 transition-colors hover:bg-cyan-500/20"
+            title={`${t("workspaceExport")} (.zip)`}
+          >
+            <Download className="h-3 w-3" />
+            <span className="hidden sm:inline">{t("workspaceExport")} (.zip)</span>
+            <span className="sm:hidden">.zip</span>
+          </button>
+        </div>
       </div>
       <p className="mt-1 text-[10px] leading-relaxed text-gray-600">{t("workspaceArtifactsHint")}</p>
 

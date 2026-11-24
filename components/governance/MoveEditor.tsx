@@ -7,6 +7,7 @@ import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { moveLanguage } from "@/lib/move/moveLanguage";
+import { tomlLanguage } from "@/lib/move/tomlLanguage";
 
 /**
  * Move source editor.
@@ -34,6 +35,12 @@ import { moveLanguage } from "@/lib/move/moveLanguage";
 const moveHighlightStyle = HighlightStyle.define([
   { tag: tags.annotation, color: "#e5c07b", fontWeight: "600" },
   { tag: tags.docComment, color: "#7f8796", fontStyle: "italic" },
+]);
+
+const tomlHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading, color: "#c678dd", fontWeight: "600" },
+  { tag: tags.propertyName, color: "#e06c75" },
+  { tag: tags.comment, color: "#7f8796", fontStyle: "italic" },
 ]);
 
 /**
@@ -130,9 +137,18 @@ export function MoveEditor({
    * Only the highlight style is taken. The full `oneDark` theme would repaint the background to its own
    * grey, which would no longer match the rest of the app.
    */
+  const isToml = path.toLowerCase().endsWith(".toml");
   const extensions = useMemo(
-    () => [moveLanguage, syntaxHighlighting(oneDarkHighlightStyle), syntaxHighlighting(moveHighlightStyle), theme],
-    []
+    () => [
+      isToml ? tomlLanguage : moveLanguage,
+      syntaxHighlighting(oneDarkHighlightStyle),
+      syntaxHighlighting(isToml ? tomlHighlightStyle : moveHighlightStyle),
+      // Long Move lines are unreadable on a 375px screen if the editor only scrolls sideways.
+      // Wrapping keeps the code visible without changing the source.
+      EditorView.lineWrapping,
+      theme,
+    ],
+    [isToml]
   );
 
   return (

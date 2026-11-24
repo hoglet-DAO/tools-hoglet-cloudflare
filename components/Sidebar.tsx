@@ -128,6 +128,29 @@ export default function Sidebar() {
           </a>
         </div>
       </motion.aside>
+
+      {/* Mobile Bottom Navigation (Omits the first item 'home', which is accessible via the top logo) */}
+      <nav className="flex sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-zinc-950/95 backdrop-blur-md border-t border-white/10 z-50 justify-around items-center px-1 pb-safe">
+        {menuItems
+          .filter((item) => item.id !== "home")
+          .map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`flex flex-col items-center justify-center min-w-0 flex-1 h-full gap-0.5 transition-colors ${
+                  isActive ? item.color : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <item.icon className={`w-5 h-5 ${isActive ? "scale-110" : ""}`} />
+                <span className="text-[9px] font-bold truncate max-w-[56px] text-center leading-tight">
+                  {t(item.key)}
+                </span>
+              </Link>
+            );
+          })}
+      </nav>
     </>
   );
 }

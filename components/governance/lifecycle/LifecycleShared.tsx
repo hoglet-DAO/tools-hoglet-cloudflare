@@ -10,7 +10,7 @@ export const inputCls =
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 sm:p-5">
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-3.5 sm:p-5">
       {children}
     </div>
   );
@@ -240,7 +240,7 @@ export function Form({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-white">{title}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-gray-500 break-all">{hint}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-gray-500 break-words">{hint}</p>
         </div>
       </div>
 

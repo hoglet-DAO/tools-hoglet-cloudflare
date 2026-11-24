@@ -49,13 +49,15 @@ export function parseScriptArgument(type: string, val: string): any {
  */
 export async function sendScriptTransaction({
   provider,
+  signRawHex,
   account,
   rpcUrl,
   scriptBytecodeHex,
   typeArgs = [],
   args = [],
 }: {
-  provider: any;
+  provider?: any;
+  signRawHex?: (hex: string, nonce?: string) => Promise<{ signature: string; publicKey: string }>;
   account: string;
   rpcUrl: string;
   scriptBytecodeHex: string;
@@ -110,14 +112,19 @@ export async function sendScriptTransaction({
   let signatureHex = "";
   let pubKeyHex = "";
 
-  if (typeof provider?.signHexMessage === "function") {
-    const res = await provider.signHexMessage(sigMessageHex);
+  if (typeof signRawHex === "function") {
+    const res = await signRawHex(sigMessageHex);
+    signatureHex = res.signature;
+    pubKeyHex = res.publicKey;
+  } else if (typeof provider?.signHexMessage === "function") {
+    // StarKey signHexMessage expects { message: "0x..." }
+    const res = await provider.signHexMessage({ message: sigMessageHex });
     signatureHex = res?.signature || res;
-    pubKeyHex = res?.publicKey || provider.publicKey || "";
+    pubKeyHex = res?.publicKey || provider?.publicKey || "";
   } else if (typeof provider?.signMessage === "function") {
-    const res = await provider.signMessage({ message: sigMessageHex, nonce: "hoglet-script" });
+    const res = await provider.signMessage({ message: sigMessageHex, nonce: "0" });
     signatureHex = res?.signature || res;
-    pubKeyHex = res?.publicKey || "";
+    pubKeyHex = res?.publicKey || provider?.publicKey || "";
   } else {
     throw new Error("Connected wallet does not support message signing");
   }

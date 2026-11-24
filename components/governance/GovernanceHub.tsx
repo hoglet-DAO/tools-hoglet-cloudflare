@@ -38,7 +38,7 @@ function GovernanceShell({ mode }: { mode: GovernanceMode }) {
   const { verdict, audit, wallet, rpcUrl } = useGovernanceAuditContext();
 
   return (
-    <section className="relative px-4 py-8 sm:px-6 sm:py-10 max-w-6xl mx-auto w-full">
+    <section className="relative px-3 sm:px-6 py-6 sm:py-10 max-w-6xl mx-auto w-full">
       <MeshBackground />
 
       {/* Masthead. The two modes are separate surfaces on purpose: a module the factory owns and an
@@ -46,10 +46,10 @@ function GovernanceShell({ mode }: { mode: GovernanceMode }) {
           to expect the same guarantees from either. */}
       <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white">
             {mode === "contracts" ? t("hubContractsTitle") : t("hubAccountsTitle")}
           </h1>
-          <p className="mt-1.5 text-sm text-gray-400 max-w-2xl">
+          <p className="mt-1.5 text-xs sm:text-sm text-gray-400 max-w-2xl leading-relaxed">
             {mode === "contracts" ? t("hubContractsSubtitle") : t("hubAccountsSubtitle")}
           </p>
         </div>

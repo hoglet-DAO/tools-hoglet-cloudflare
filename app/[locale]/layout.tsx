@@ -120,7 +120,7 @@ export default async function LocaleLayout({
               <LegalConsentModal />
               <Toaster position="bottom-right" richColors theme="dark" />
               {children}
-              <footer className="mt-auto py-6 text-center text-[11px] text-zinc-500">
+              <footer className="mx-auto mt-auto max-w-3xl px-4 py-6 text-center text-[11px] text-zinc-500">
                 Hoglet Tools is a non-custodial infrastructure. Provided As-Is without warranties. <a href="https://github.com/hoglet-DAO/tools-hoglet-cloudflare/blob/main/DISCLAIMER.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300 transition-colors">Read our Open-Source Terms</a>.
               </footer>
             </SupraWalletProvider>

@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Bar />
 
-        <div className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10 pb-20 sm:pb-0">
           {children}
         </div>
       </main>

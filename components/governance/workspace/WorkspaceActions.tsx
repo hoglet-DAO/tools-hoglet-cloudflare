@@ -207,21 +207,23 @@ export function WorkspaceActions({
             : t("workspaceCodeSize", { size: formatBytes(shownSize) })}
       </span>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0 flex flex-wrap items-center justify-between sm:justify-end gap-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
           {t("workspaceNewProject")}
         </span>
-        {STARTER_VARIANTS.map((variant) => (
-          <button
-            key={variant}
-            type="button"
-            onClick={() => onLoadTemplate(variant)}
-            title={variant === "basic" ? t("workspaceTemplateBasicHint") : t("workspaceTemplateFullHint")}
-            className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-gray-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/50"
-          >
-            {variant === "basic" ? t("workspaceTemplateBasic") : t("workspaceTemplateFull")}
-          </button>
-        ))}
+        <div className="flex items-center gap-1.5">
+          {STARTER_VARIANTS.map((variant) => (
+            <button
+              key={variant}
+              type="button"
+              onClick={() => onLoadTemplate(variant)}
+              title={variant === "basic" ? t("workspaceTemplateBasicHint") : t("workspaceTemplateFullHint")}
+              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-gray-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/50"
+            >
+              {variant === "basic" ? t("workspaceTemplateBasic") : t("workspaceTemplateFull")}
+            </button>
+          ))}
+        </div>
       </div>
       </div>
 
