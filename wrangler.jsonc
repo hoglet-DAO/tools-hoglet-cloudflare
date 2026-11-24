@@ -10,6 +10,19 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "MOVE_VERIFY_DB",
+      "database_name": "hoglet-move-verify",
+      "database_id": "5720953a-3007-4e3a-b3b2-1e08ae1115a0"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MOVE_SOURCES",
+      "bucket_name": "hoglet-move-sources"
+    }
+  ],
   "observability": {
     "enabled": true
   },

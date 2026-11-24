@@ -3,7 +3,8 @@
 Date: 2026-11-24
 Status: draft for review
 Scope: a source-verification service and surface for Supra packages, in the
-`tools-hoglet-cloudflare` app plus one optional endpoint on the Move compile VPS.
+`tools-hoglet-cloudflare` app, plus a small set of changes to the Move compile
+service on the VPS (owned by this project).
 
 ## Intent
 
@@ -32,7 +33,9 @@ The two claims are shown separately because they fail separately.
 
 Success: open a package, see its modules and either its proven source or an
 explicit "not verified" state, without trusting this app's database. A
-third party can download the exact inputs and re-run the verification.
+third party in a permitted jurisdiction can download the exact inputs and
+re-run the verification. The geoblock is intentional and stays; the promise is
+scoped to the same jurisdictions the rest of the app serves.
 
 ## Goals
 
@@ -246,6 +249,9 @@ can serve the JSON as-is and a `.zip` generated on demand from `files` +
 - Create both resources in the account that already runs this Worker. Commit
   the database id and bucket name in `wrangler.jsonc` as bindings
   (`MOVE_VERIFY_DB`, `MOVE_SOURCES`).
+  Created 2026-11-24: D1 `hoglet-move-verify`
+  (`5720953a-3007-4e3a-b3b2-1e08ae1115a0`, ENAM) and R2 `hoglet-move-sources`.
+  The bindings are already in `wrangler.jsonc`.
 - Migrations live in `migrations/` and are applied with
   `wrangler d1 migrations apply` locally and before deploy. The deploy script
   stays explicit; do not make `next build` mutate a database.
@@ -486,30 +492,46 @@ manually and keep them in sync. No English fallback is configured.
   and network.
 - UI: manual, plus the existing locale/lint checks.
 
-## Open decisions (product owner)
+## Resolved decisions
 
-1. **Geoblock vs. "anyone can download".** `middleware.ts` returns `403` for
-   every `/api/*` and every page in `RESTRICTED_REGIONS`. The verify endpoints
-   and the bundle download inherit that. Either the promise is scoped to
-   permitted jurisdictions, or `/api/verify/*` (and the page) are whitelisted in
-   the middleware. This is a legal/product call, and it changes the API surface
-   and the copy.
-2. **Compile VPS scope.** Does this project own changes to the VPS (a reported
-   compiler version, accepting a `deps/` tree, a verification lane)? If not, v1
-   is limited to `git`-only dependencies, records `compiler_version: unknown`,
-   and cannot verify `amm`-style packages with `local` dependencies.
+1. **Geoblock stays.** The verification page and `/api/verify/*` inherit the
+   existing jurisdiction filter. No middleware exception. Copy and docs say
+   "permitted jurisdictions".
+2. **The compile VPS is ours.** The changes below are in scope and are the only
+   deliverable outside this repository. v1 can rely on them.
+
+## VPS work requested (message to the compile-service dev)
+
+Contract the app needs:
+
+1. `POST /compile` response gains `compiler_version` (the exact toolchain version
+   that ran) and, when known, `framework_commit`. The UI and the D1 record show
+   them; without them a mismatch cannot be explained.
+2. Accept a file map containing `deps/<name>/**` and a manifest whose
+   `[dependencies.X] local = "deps/X"` points into it. Write the map verbatim
+   under the package root and do not rewrite paths. Keep rejecting absolute
+   paths, `..` and symlinks.
+3. Add a `purpose: "verify"` field (or an equivalent header) that puts the job in
+   a separate lane or priority, so a 300 s verification does not block an IDE
+   compile. If a second lane is not feasible, have verification yield and return
+   `503` rather than queue indefinitely.
+4. Expose `GET /version` with the toolchain version.
+5. Keep the git allowlist enforced on the service too, not only in the app. The
+   app will send framework deps pinned to a commit when it can; the service
+   should refuse anything outside the Supra/Hoglet repositories.
+6. Compile output stays `address::name` plus hex per module. The app compares
+   against the chain; the service needs no chain access and no registry logic.
+
+Nothing else about the compile API changes for the IDE path.
 
 ## Left to the builder
 
 - Whether the verify page gets a sidebar entry or only an interactor link.
 - Exact copy and badge wording per locale.
-- The compile service's compiler-version field: add it if it is missing; the
-  record needs it.
-- How the VPS exposes a second compile lane (or a priority flag) so verification
-  cannot starve the IDE. This is an operational decision, not an app one.
 - Whether to add a `framework_commit` advanced input in v1 or defer it. The
   pipeline supports it either way.
 - The R2 bucket's public/private posture and the download route's cache headers.
+- Whether to add a testnet fixture next to the mainnet one.
 
 ## Appendix: how the evidence was obtained
 
