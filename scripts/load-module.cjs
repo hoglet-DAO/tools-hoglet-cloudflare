@@ -47,6 +47,12 @@ function loadTs(file, locals = {}) {
     if (spec in locals) return locals[spec];
     const aliased = resolveAlias(spec);
     if (aliased) return loadTs(aliased, locals);
+    if (spec.startsWith(".")) {
+      const rel = path.resolve(path.dirname(abs), spec);
+      for (const ext of [".ts", ".tsx", ".js"]) {
+        if (fs.existsSync(rel + ext)) return loadTs(rel + ext, locals);
+      }
+    }
     return base(spec);
   };
 
