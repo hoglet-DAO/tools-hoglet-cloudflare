@@ -10,6 +10,9 @@
     "lint": "eslint",
     "check:vault": "node scripts/check-vault-drift.cjs",
     "check:i18n": "node scripts/check-i18n-governance.cjs",
+    "db:migrate:local": "wrangler d1 migrations apply hoglet-move-verify --local",
+    "db:migrate:remote": "wrangler d1 migrations apply hoglet-move-verify --remote",
+    "test:verify": "node scripts/test-verify-digest.cjs && node scripts/test-verify-manifest.cjs && node scripts/test-verify-rpc.cjs && node scripts/test-verify-compare.cjs && node scripts/test-verify-store.cjs && node scripts/test-verify-service.cjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
